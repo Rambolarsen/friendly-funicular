@@ -18,12 +18,14 @@ const DISPLAY_SIZE: Record<string, [number, number]> = {
 /** Sprite for a server-owned enemy. Used in multiplayer mode. */
 export class RemoteEnemy extends Phaser.GameObjects.Sprite {
   readonly enemyId: string;
+  readonly enemyType: string;
   private targetX: number;
   private targetY: number;
 
   constructor(scene: Phaser.Scene, state: MultiplayerEnemyState) {
     super(scene, state.x, state.y, 'chars', 0);
     this.enemyId = state.id;
+    this.enemyType = state.type;
     this.targetX = state.x;
     this.targetY = state.y;
 
@@ -45,6 +47,12 @@ export class RemoteEnemy extends Phaser.GameObjects.Sprite {
   preUpdate(): void {
     this.x = Phaser.Math.Linear(this.x, this.targetX, 0.25);
     this.y = Phaser.Math.Linear(this.y, this.targetY, 0.25);
+  }
+
+  /** Brief red flash to confirm an attack hit landed. */
+  flash(): void {
+    this.setTint(0xff4444);
+    this.scene.time.delayedCall(80, () => { this.clearTint(); });
   }
 
   /** Axis-aligned bounding rect for attack overlap checks. */

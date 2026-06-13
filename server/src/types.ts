@@ -30,6 +30,7 @@ export interface EnemyState {
   direction: 1 | -1;
   hp: number;
   maxHp: number;
+  vy?: number; // server-internal: vertical velocity
 }
 
 export interface RoomInfo {

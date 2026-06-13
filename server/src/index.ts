@@ -8,6 +8,11 @@ const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3001;
 const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN ?? 'http://localhost:5173';
 
 const app = express();
+
+app.get('/', (_req, res) => {
+  res.send('Dungeons &amp; Deliverables — game server OK. Socket.io is live.');
+});
+
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: { origin: CLIENT_ORIGIN, methods: ['GET', 'POST'] },
@@ -76,4 +81,13 @@ io.on('connection', (socket) => {
 
 httpServer.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
+});
+
+httpServer.on('error', (err: NodeJS.ErrnoException) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(`\n[ERROR] Port ${PORT} is already in use.`);
+    console.error(`A stale server process is blocking startup.`);
+    console.error(`Find and kill it: Get-NetTCPConnection -LocalPort ${PORT} | Select-Object OwningProcess`);
+    process.exit(1);
+  }
 });

@@ -12,8 +12,24 @@ import {
 import { HordeSpawner, SpawnType } from './HordeSpawner';
 
 const ARENA_WIDTH = 1280;
-const GROUND_Y = 560;
+const ARENA_HEIGHT = 640;
+// Enemy ground y: platform top (590) minus half enemy body height (12) = 578
+const ENEMY_GROUND_Y = 578;
 const ENEMY_SPEED_PX_PER_S = 80;
+const GRAVITY = 1200;        // px/s²
+const JUMP_VY = -750;        // px/s — enough to clear the 40px gaps
+const JUMP_TRIGGER_DIST = 10; // px look-ahead before a gap edge
+
+// Ground segments from hordeArena (platform x range at ground level)
+const GROUND_SEGMENTS = [
+  { x1: 0,   x2: 420  },
+  { x1: 460, x2: 820  },
+  { x1: 860, x2: 1280 },
+];
+
+function isOnGroundSegment(x: number): boolean {
+  return GROUND_SEGMENTS.some(s => x >= s.x1 && x <= s.x2);
+}
 const OVERRUN_THRESHOLD = 20;
 const TICK_MS = 50; // 20fps
 
@@ -50,6 +66,10 @@ export class GameRoom {
   private lastTick = Date.now();
   private gameOver = false;
 
+  get isEnded(): boolean {
+    return this.gameOver;
+  }
+
   private onTick: (payload: StatePayload) => void;
   private onGameOver: (payload: GameOverPayload) => void;
   private onEnemyDied: (payload: EnemyDiedPayload) => void;
@@ -72,7 +92,7 @@ export class GameRoom {
       name,
       classId,
       x: 100,
-      y: GROUND_Y,
+      y: ENEMY_GROUND_Y,
       flipX: false,
       animKey: 'player-idle',
       hp: 100,
@@ -170,18 +190,51 @@ export class GameRoom {
 
   private moveEnemies(delta: number): void {
     const playerList = Array.from(this.players.values());
-    if (playerList.length === 0) {
-      return;
-    }
+    const dt = delta / 1000;
+    const toRemove: string[] = [];
 
     for (const enemy of this.enemies.values()) {
-      const nearest = playerList.reduce((a, b) =>
-        Math.abs(a.x - enemy.x) < Math.abs(b.x - enemy.x) ? a : b,
-      );
-      const dir: 1 | -1 = nearest.x > enemy.x ? 1 : -1;
+      const nearest = playerList.length > 0
+        ? playerList.reduce((a, b) =>
+            Math.abs(a.x - enemy.x) < Math.abs(b.x - enemy.x) ? a : b,
+          )
+        : null;
+
+      const dir: 1 | -1 = nearest ? (nearest.x > enemy.x ? 1 : -1) : enemy.direction;
       enemy.direction = dir;
-      enemy.x += dir * ENEMY_SPEED_PX_PER_S * (delta / 1000);
+
+      // Gap detection: if look-ahead leaves the ground, jump
+      const vy = enemy.vy ?? 0;
+      const onGround = isOnGroundSegment(enemy.x) && Math.abs(enemy.y - ENEMY_GROUND_Y) < 3;
+      if (onGround && vy >= 0) {
+        const lookX = enemy.x + dir * JUMP_TRIGGER_DIST;
+        if (!isOnGroundSegment(lookX)) {
+          enemy.vy = JUMP_VY;
+        }
+      }
+
+      // Apply gravity and move
+      enemy.vy = (enemy.vy ?? 0) + GRAVITY * dt;
+      enemy.x += dir * ENEMY_SPEED_PX_PER_S * dt;
+      enemy.y += enemy.vy * dt;
+
+      // Ground collision
+      if (isOnGroundSegment(enemy.x) && enemy.y >= ENEMY_GROUND_Y) {
+        enemy.y = ENEMY_GROUND_Y;
+        enemy.vy = 0;
+      }
+
+      // Remove enemies that fell off the arena
+      if (enemy.y > ARENA_HEIGHT + 60) {
+        toRemove.push(enemy.id);
+        continue;
+      }
+
       enemy.x = Math.max(0, Math.min(ARENA_WIDTH, enemy.x));
+    }
+
+    for (const id of toRemove) {
+      this.enemies.delete(id);
     }
   }
 
@@ -210,10 +263,11 @@ export class GameRoom {
       id,
       type: enemyType,
       x,
-      y: GROUND_Y,
+      y: ENEMY_GROUND_Y,
       direction,
       hp,
       maxHp: hp,
+      vy: 0,
     });
   }
 }

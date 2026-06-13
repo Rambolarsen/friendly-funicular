@@ -154,6 +154,35 @@ export class GameScene extends Phaser.Scene {
     if (this.levelComplete) return;
 
     this.player.update(time);
+
+    // Ability key — runs in both solo and multiplayer
+    if (Phaser.Input.Keyboard.JustDown(this.abilityKey)) {
+      const projectileSnapshot = this.classId === 'security'
+        ? this.projectiles.getChildren().filter(isPositionedActiveObject).map(({ x, y }) => ({ x, y }))
+        : [];
+      const result = executeClassAbility({
+        scene: this,
+        time,
+        player: this.player,
+        enemies: this.enemies,      // empty in multiplayer; enemy effects won't fire
+        projectiles: this.projectiles,
+        loots: this.loots,
+        onEnemyDefeated: (enemy) => {
+          this.onEnemyDied(enemy as Enemy);
+        },
+      });
+      if (result) {
+        if (result.statDelta) {
+          this.stats = applyStatChanges(this.stats, result.statDelta);
+          this.emitStats();
+        }
+        this.lastAbilityUsedAt = time;
+        this.projectileTelegraphSnapshot = projectileSnapshot;
+        this.game.events.emit(ABILITY_USED, { name: result.name, cooldownMs: result.cooldownMs });
+        this.checkWinLose();
+      }
+    }
+
     if (this.isMultiplayer) {
       // Send position to server
       this.positionUpdateTimer += this.sys.game.loop.delta;
@@ -172,9 +201,33 @@ export class GameScene extends Phaser.Scene {
       // Attack against RemoteEnemies
       for (const [enemyId, re] of this.remoteEnemies) {
         if (this.player.isAttackHitting(re)) {
-          this.socketClient!.attackEnemy({ enemyId, damage: 25 });
+          re.flash();
+          this.socketClient!.attackEnemy({ enemyId, damage: this.player.getAttackDamage() });
         }
       }
+
+      // Contact damage from RemoteEnemies (no physics body — manual proximity check)
+      const REMOTE_CONTACT_DAMAGE: Record<string, number> = {
+        goblin: 10, wraith: 8, troll: 15, brute: 15, spectre: 5, boss: 25,
+      };
+      for (const re of this.remoteEnemies.values()) {
+        const threshold = (this.player.displayWidth + re.displayWidth) / 2 - 4;
+        const dx = this.player.x - re.x;
+        const dy = this.player.y - re.y;
+        if (Math.sqrt(dx * dx + dy * dy) < threshold) {
+          const dmg = REMOTE_CONTACT_DAMAGE[re.enemyType] ?? 10;
+          const { newStats, died, didTakeDamage } = this.player.takeDamage(dmg, this.stats, time, re.x);
+          if (didTakeDamage) {
+            soundManager.playerHurt();
+            this.stats = newStats;
+            this.cameras.main.shake(250, 0.008);
+            this.emitStats();
+            this.updateHUD();
+            if (died) this.onPlayerDied();
+          }
+        }
+      }
+
       return; // skip local enemy logic in multiplayer
     }
     this.updateAbilityTelegraph();
@@ -206,37 +259,6 @@ export class GameScene extends Phaser.Scene {
     for (const obj of this.enemies.getChildren()) {
       if (obj instanceof SpectreEnemy && obj.active) {
         obj.shoot(this.player.x, this.player.y, time);
-      }
-    }
-
-    if (Phaser.Input.Keyboard.JustDown(this.abilityKey)) {
-      const projectileSnapshot = this.classId === 'security'
-        ? this.projectiles.getChildren().filter(isPositionedActiveObject).map(({ x, y }) => ({ x, y }))
-        : [];
-      const result = executeClassAbility({
-        scene: this,
-        time,
-        player: this.player,
-        enemies: this.enemies,
-        projectiles: this.projectiles,
-        loots: this.loots,
-        onEnemyDefeated: (enemy) => {
-          this.onEnemyDied(enemy as Enemy);
-        },
-      });
-
-      if (result) {
-        if (result.statDelta) {
-          this.stats = applyStatChanges(this.stats, result.statDelta);
-          this.emitStats();
-        }
-        this.lastAbilityUsedAt = time;
-        this.projectileTelegraphSnapshot = projectileSnapshot;
-        this.game.events.emit(ABILITY_USED, {
-          name: result.name,
-          cooldownMs: result.cooldownMs,
-        });
-        this.checkWinLose();
       }
     }
 

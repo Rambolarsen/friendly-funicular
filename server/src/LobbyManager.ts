@@ -29,7 +29,10 @@ export class LobbyManager {
 
   getOrCreate(id: string | null): GameRoom {
     if (id && this.rooms.has(id)) {
-      return this.rooms.get(id)!;
+      const existing = this.rooms.get(id)!;
+      if (!existing.isEnded) {
+        return existing;
+      }
     }
     return this.createRoom();
   }
@@ -52,7 +55,7 @@ export class LobbyManager {
 
   getLobbyInfo(): RoomInfo[] {
     return Array.from(this.rooms.values())
-      .filter((room) => !room.isEmpty())
+      .filter((room) => !room.isEmpty() && !room.isEnded)
       .map((room) => ({
         id: room.id,
         playerCount: room.players.size,
