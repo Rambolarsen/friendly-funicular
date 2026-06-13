@@ -1,4 +1,4 @@
-import { GameStats, LogEntry } from '../types/game';
+import { GameStats } from '../types/game';
 
 export function clampStatChange(change: number): number {
   return Math.max(-20, Math.min(20, change));
@@ -27,21 +27,4 @@ export function checkWinLose(
   if (stats.complianceRisk >= 100) return { outcome: 'lose', reason: 'A regulator arrived. The project — and three careers — are over.' };
   if (isBossDefeated && stats.deliveryProgress >= 70) return { outcome: 'win', reason: null };
   return { outcome: null, reason: null };
-}
-
-export function makeLogEntry(type: LogEntry['type'], text: string): LogEntry {
-  return { id: Math.random().toString(36).slice(2), type, text, timestamp: Date.now() };
-}
-
-export function formatStatChange(key: keyof GameStats, change: number): string {
-  const labels: Record<keyof GameStats, string> = {
-    budget: 'Budget',
-    clientHappiness: 'Client Happiness',
-    technicalDebt: 'Technical Debt',
-    teamMorale: 'Team Morale',
-    deliveryProgress: 'Delivery Progress',
-    complianceRisk: 'Compliance Risk',
-  };
-  const sign = change > 0 ? '+' : '';
-  return `${labels[key]}: ${sign}${change}`;
 }

@@ -2,6 +2,10 @@
 
 A browser-based dungeon crawler where the player is an IT consultant navigating a corporate dungeon, with an Express backend that proxies OpenAI calls as the Dungeon Master.
 
+## Issue Board
+
+https://github.com/Rambolarsen/friendly-funicular/issues
+
 ## Commands
 
 ```bash

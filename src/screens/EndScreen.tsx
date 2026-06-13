@@ -1,13 +1,15 @@
 import { StatBar } from '../components/StatBar';
-import { GameState } from '../types/game';
+import { ConsultantClass, GameStats } from '../types/game';
 
 type Props = {
-  state: GameState;
+  outcome: 'win' | 'lose';
+  stats: GameStats;
+  loseReason: string | null;
+  selectedClass: ConsultantClass | null;
   onRestart: () => void;
 };
 
-export function EndScreen({ state, onRestart }: Props) {
-  const { outcome, stats, loseReason, finalReport, selectedClass } = state;
+export function EndScreen({ outcome, stats, loseReason, selectedClass, onRestart }: Props) {
   const isWin = outcome === 'win';
 
   return (
@@ -35,19 +37,6 @@ export function EndScreen({ state, onRestart }: Props) {
           <StatBar label="Delivery Progress" value={stats.deliveryProgress} emoji="🚀" />
           <StatBar label="Technical Debt" value={stats.technicalDebt} emoji="🕷️" inverted />
           <StatBar label="Compliance Risk" value={stats.complianceRisk} emoji="⚖️" inverted />
-        </div>
-
-        <div className="mb-6 rounded-xl border border-amber-900 bg-gray-900 p-6">
-          <h2 className="mb-4 text-sm font-bold tracking-widest text-amber-400">
-            📜 {isWin ? 'FINAL DELIVERY REPORT' : 'PROJECT POST-MORTEM'}
-          </h2>
-          {finalReport ? (
-            <pre className="whitespace-pre-wrap font-mono text-xs leading-relaxed text-gray-300">
-              {finalReport}
-            </pre>
-          ) : (
-            <p className="animate-pulse text-sm italic text-gray-500">Generating report...</p>
-          )}
         </div>
 
         <div className="text-center">
