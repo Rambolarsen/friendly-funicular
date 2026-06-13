@@ -2,6 +2,10 @@
 
 A browser-based dungeon crawler where the player is an IT consultant navigating a corporate dungeon, with an Express backend that proxies OpenAI calls as the Dungeon Master.
 
+## Skills
+
+Always invoke the `using-superpowers` skill at the start of any development work. This ensures the correct workflow skills (brainstorming, TDD, debugging, etc.) are applied before taking action.
+
 ## Issue Board
 
 https://github.com/Rambolarsen/friendly-funicular/issues
