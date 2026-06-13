@@ -172,7 +172,7 @@ export class GameScene extends Phaser.Scene {
       // Attack against RemoteEnemies
       for (const [enemyId, re] of this.remoteEnemies) {
         if (this.player.isAttackHitting(re)) {
-          this.socketClient!.attackEnemy({ enemyId, damage: PLAYER_ATTACK_DAMAGE });
+          this.socketClient!.attackEnemy({ enemyId, damage: 25 });
         }
       }
       return; // skip local enemy logic in multiplayer
@@ -250,12 +250,16 @@ export class GameScene extends Phaser.Scene {
 
   private buildBackground() {
     const { width, height } = this.currentLevel;
-    this.add.rectangle(width / 2, height / 2, width, height, 0x1a1a2e).setDepth(0);
-
-    // Decorative vertical stripes (corporate dungeon flavour)
-    const stripe = this.isBossLevel ? 0x2d1b3d : 0x16213e;
-    for (let x = 0; x < width; x += 160) {
-      this.add.rectangle(x, height / 2, 80, height, stripe, 0.3).setDepth(0);
+    if (this.textures.exists('dungeon-bg') && this.isMultiplayer) {
+      // Tile the dungeon background for the compact arena
+      this.add.image(width / 2, height / 2, 'dungeon-bg').setDepth(0);
+    } else {
+      // Existing gradient background for solo levels
+      this.add.rectangle(width / 2, height / 2, width, height, 0x1a1a2e).setDepth(0);
+      const stripe = this.isBossLevel ? 0x2d1b3d : 0x16213e;
+      for (let x = 0; x < width; x += 160) {
+        this.add.rectangle(x, height / 2, 80, height, stripe, 0.3).setDepth(0);
+      }
     }
   }
 

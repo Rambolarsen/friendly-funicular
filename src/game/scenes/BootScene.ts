@@ -94,10 +94,45 @@ export class BootScene extends Phaser.Scene {
     const roomId = this.registry.get('roomId') as string | null;
     const multiplayer = Boolean(this.registry.get('multiplayer'));
 
+    this.createDungeonBg();
+
     this.scene.start('GameScene', {
       multiplayer,
       socketClient,
       roomId: roomId ?? undefined,
     });
+  }
+
+  private createDungeonBg(): void {
+    const W = 1280, H = 640;
+    const gfx = this.make.graphics({ x: 0, y: 0 });
+
+    // Dark stone base
+    gfx.fillStyle(0x0d0d1a);
+    gfx.fillRect(0, 0, W, H);
+
+    // Stone brick rows
+    gfx.lineStyle(1, 0x2a2a3a, 0.6);
+    for (let y = 0; y < H; y += 32) {
+      const offset = (Math.floor(y / 32) % 2) * 48;
+      for (let x = -offset; x < W; x += 96) {
+        gfx.strokeRect(x, y, 96, 32);
+      }
+    }
+
+    // Dungeon floor darker stripe
+    gfx.fillStyle(0x080810, 0.5);
+    gfx.fillRect(0, H - 80, W, 80);
+
+    // Torch glow spots (left, centre, right)
+    for (const tx of [80, 640, 1200]) {
+      gfx.fillStyle(0xf97316, 0.12);
+      gfx.fillEllipse(tx, 60, 240, 240);
+      gfx.fillStyle(0xfbbf24, 0.08);
+      gfx.fillEllipse(tx, 60, 120, 120);
+    }
+
+    gfx.generateTexture('dungeon-bg', W, H);
+    gfx.destroy();
   }
 }

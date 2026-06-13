@@ -3,7 +3,7 @@ import { RawStats } from '../../types/game';
 import { applyStatChanges } from '../../domain/rules/statRules';
 import { checkWinLose } from '../../domain/rules/progressionRules';
 import { EnemyType } from '../levels/types';
-import { CLASS_MODIFIERS, CLASS_ATTACK_DAMAGE, CONSULTANT_CLASSES } from '../../constants/classes';
+import { CLASS_MODIFIERS, CLASS_ATTACK_DAMAGE } from '../../constants/classes';
 import { ATTACK_USED } from '../eventKeys';
 import { soundManager } from '../sound';
 
