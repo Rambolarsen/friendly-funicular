@@ -50,7 +50,7 @@ export function PhaserGame({ selectedClass, onGameOver }: PhaserGameProps) {
 
   return (
     <div className="relative w-full h-full">
-      <div ref={containerRef} />
+      <div ref={containerRef} className="w-full h-full" />
 
       {/* HUD overlay — stat bars rendered over the Phaser canvas */}
       <div className="pointer-events-none absolute right-2 top-2 w-48 rounded-xl border border-gray-700 bg-gray-950/80 p-3 backdrop-blur-sm">

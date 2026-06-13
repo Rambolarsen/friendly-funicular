@@ -124,7 +124,7 @@ export class SpectreEnemy extends Enemy {
     const angle = Phaser.Math.Angle.Between(this.x, this.y, targetX, targetY);
     const body = (proj as unknown as { body: Phaser.Physics.Arcade.Body }).body;
     body.setVelocity(Math.cos(angle) * speed, Math.sin(angle) * speed);
-    body.setGravityY(-600); // counteract world gravity
+    body.setGravityY(-1800); // counteract world gravity
 
     this.scene.time.delayedCall(3000, () => {
       if (proj.active) {

@@ -6,7 +6,7 @@ import { EnemyType } from '../levels/types';
 import { CLASS_MODIFIERS } from '../../constants/classes';
 
 const MOVE_SPEED = 200;
-const JUMP_VELOCITY = -520;
+const JUMP_VELOCITY = -860;
 const MAX_HP = 100;
 const ATTACK_COOLDOWN = 400; // ms
 const ATTACK_RANGE = 48;
@@ -28,6 +28,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   private attackKeys!: { z: Phaser.Input.Keyboard.Key; x: Phaser.Input.Keyboard.Key };
   /** Visible hitbox graphic shown briefly during attack */
   private attackBox: Phaser.GameObjects.Rectangle | null = null;
+  private jumpBufferTimer = 0;
+  private static readonly JUMP_BUFFER_MS = 120;
 
   constructor(scene: Phaser.Scene, x: number, y: number, classId: string) {
     super(scene, x, y, 'chars', 0);
@@ -75,12 +77,16 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       body.setVelocityX(0);
     }
 
-    // Jump
-    const jumpPressed = Phaser.Input.Keyboard.JustDown(this.cursors.up)
-      || Phaser.Input.Keyboard.JustDown(this.cursors.space as Phaser.Input.Keyboard.Key)
-      || Phaser.Input.Keyboard.JustDown(this.wasd.up);
-    if (jumpPressed && onGround) {
+    // Jump (hold to auto-jump on landing; 120ms buffer for early presses)
+    const jumpPressed = this.cursors.up.isDown
+      || (this.cursors.space as Phaser.Input.Keyboard.Key).isDown
+      || this.wasd.up.isDown;
+    if (jumpPressed) {
+      this.jumpBufferTimer = time + Player.JUMP_BUFFER_MS;
+    }
+    if (this.jumpBufferTimer > time && onGround) {
       body.setVelocityY(JUMP_VELOCITY);
+      this.jumpBufferTimer = 0;
     }
 
     // Attack

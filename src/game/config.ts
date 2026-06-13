@@ -10,13 +10,17 @@ export function createGameConfig(
 ): Phaser.Types.Core.GameConfig {
   return {
     type: Phaser.AUTO,
-    width: 960,
-    height: 540,
-    parent,
     backgroundColor: '#1a1a2e',
+    scale: {
+      mode: Phaser.Scale.FIT,
+      autoCenter: Phaser.Scale.CENTER_BOTH,
+      width: 960,
+      height: 540,
+      parent,
+    },
     physics: {
       default: 'arcade',
-      arcade: { gravity: { x: 0, y: 600 }, debug: false },
+      arcade: { gravity: { x: 0, y: 1800 }, debug: false },
     },
     scene: [BootScene, GameScene],
     callbacks: {
