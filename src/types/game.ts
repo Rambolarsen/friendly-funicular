@@ -17,3 +17,9 @@ export type ConsultantClass = {
 };
 
 export type GamePhase = 'start' | 'playing' | 'end';
+
+export type GameOverPayload = {
+  outcome: 'win' | 'lose';
+  stats: GameStats;
+  reason: string | null;
+};
