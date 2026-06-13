@@ -5,9 +5,10 @@ import { ConsultantClass } from '../types/game';
 
 type Props = {
   onStart: (cls: ConsultantClass) => void;
+  onMultiplayer?: (cls: ConsultantClass) => void;
 };
 
-export function StartScreen({ onStart }: Props) {
+export function StartScreen({ onStart, onMultiplayer }: Props) {
   const [selected, setSelected] = useState<ConsultantClass | null>(null);
 
   return (
@@ -46,19 +47,28 @@ export function StartScreen({ onStart }: Props) {
           ))}
         </div>
 
-        <div className="text-center">
+        <div className="flex flex-col items-center gap-3">
           <button
             onClick={() => selected && onStart(selected)}
             disabled={!selected}
-            className={`
-              rounded-xl px-10 py-4 text-lg font-bold tracking-widest transition-all duration-200
-              ${selected
+            className={`rounded-xl px-10 py-4 text-lg font-bold tracking-widest transition-all duration-200 ${
+              selected
                 ? 'cursor-pointer bg-purple-700 text-white shadow-lg shadow-purple-900/50 hover:bg-purple-600 active:scale-95'
                 : 'cursor-not-allowed bg-gray-800 text-gray-600'
-              }
-            `}
+            }`}
           >
-            {selected ? `⚔️ ENTER THE DUNGEON AS ${selected.name.toUpperCase()} ⚔️` : 'SELECT A CLASS TO BEGIN'}
+            {selected ? `▶ SOLO — ${selected.name.toUpperCase()}` : 'SELECT A CLASS TO BEGIN'}
+          </button>
+          <button
+            onClick={() => selected && onMultiplayer?.(selected)}
+            disabled={!selected}
+            className={`rounded-xl px-10 py-3 text-base font-bold tracking-widest transition-all duration-200 ${
+              selected
+                ? 'cursor-pointer bg-blue-800 text-white hover:bg-blue-700 active:scale-95'
+                : 'cursor-not-allowed bg-gray-800 text-gray-600'
+            }`}
+          >
+            🌐 MULTIPLAYER
           </button>
         </div>
       </div>

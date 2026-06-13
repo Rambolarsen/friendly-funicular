@@ -19,7 +19,7 @@ export type ConsultantClass = {
   color: string;       // CSS accent color for border and name text
 };
 
-export type GamePhase = 'start' | 'playing' | 'end';
+export type GamePhase = 'start' | 'lobby' | 'playing' | 'end';
 
 export type GameOverPayload = {
   outcome: 'win' | 'lose';
