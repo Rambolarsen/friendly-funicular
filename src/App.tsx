@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { EndScreen } from './screens/EndScreen';
 import { StartScreen } from './screens/StartScreen';
-import { ConsultantClass, GamePhase, GameStats } from './types/game';
+import { ConsultantClass, GamePhase, RawStats } from './types/game';
 import { PhaserGame } from './game/PhaserGame';
 
 type GameResult = {
   outcome: 'win' | 'lose';
-  stats: GameStats;
+  stats: RawStats;
   loseReason: string | null;
   selectedClass: ConsultantClass;
 };

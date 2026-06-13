@@ -7,9 +7,6 @@ export type RawStats = {
   complianceRisk: number;
 };
 
-/** @deprecated Use RawStats */
-export type GameStats = RawStats;
-
 export type ConsultantClass = {
   id: string;
   name: string;

@@ -1,9 +1,9 @@
 import { StatBar } from '../components/StatBar';
-import { ConsultantClass, GameStats } from '../types/game';
+import { ConsultantClass, RawStats } from '../types/game';
 
 type Props = {
   outcome: 'win' | 'lose';
-  stats: GameStats;
+  stats: RawStats;
   loseReason: string | null;
   selectedClass: ConsultantClass | null;
   onRestart: () => void;

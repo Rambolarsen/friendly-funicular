@@ -1,6 +1,8 @@
 import Phaser from 'phaser';
-import { GameStats } from '../../types/game';
-import { applyStatChanges, checkWinLose } from '../../engine/gameEngine';
+import { RawStats } from '../../types/game';
+import { GameStats as GameStatsVO } from '../../domain/valueObjects/GameStats';
+import { applyStatChanges } from '../../domain/rules/statRules';
+import { checkWinLose } from '../../domain/rules/progressionRules';
 import { GAME_OVER, STATS_CHANGED } from '../eventKeys';
 import { Player } from '../entities/Player';
 import { Enemy, SpectreEnemy } from '../entities/Enemy';
@@ -10,7 +12,7 @@ import { level1 } from '../levels/level1';
 import { bossLevel } from '../levels/bossLevel';
 
 const PLAYER_ATTACK_DAMAGE = 25;
-const LOOT_STATS: Record<string, Partial<GameStats>> = {
+const LOOT_STATS: Record<string, Partial<RawStats>> = {
   budget: { budget: 15 },
   morale: { teamMorale: 12 },
   debt:   { technicalDebt: -15 },
@@ -24,7 +26,7 @@ export class GameScene extends Phaser.Scene {
   private loots!: Phaser.GameObjects.Group;
   private boss: Boss | null = null;
 
-  private stats!: GameStats;
+  private stats!: RawStats;
   private classId!: string;
   private isBossLevel = false;
   private bossDefeated = false;
@@ -46,7 +48,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   create() {
-    this.stats = { ...(this.registry.get('stats') as GameStats) };
+    this.stats = GameStatsVO.from(this.registry.get('stats') as RawStats).toPlain();
     this.classId = this.registry.get('selectedClass')?.id ?? 'developer';
 
     this.currentLevel = this.isBossLevel ? bossLevel : level1;
@@ -277,9 +279,9 @@ export class GameScene extends Phaser.Scene {
   }
 }
 
-function mergePartials(a: Partial<GameStats>, b: Partial<GameStats>): Partial<GameStats> {
+function mergePartials(a: Partial<RawStats>, b: Partial<RawStats>): Partial<RawStats> {
   const result = { ...a };
-  for (const k of Object.keys(b) as (keyof GameStats)[]) {
+  for (const k of Object.keys(b) as (keyof RawStats)[]) {
     result[k] = ((result[k] ?? 0) + (b[k] ?? 0)) as number;
   }
   return result;

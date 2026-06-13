@@ -1,21 +1,21 @@
 import Phaser from 'phaser';
 import { useEffect, useRef, useState } from 'react';
 import { INITIAL_STATS } from '../constants/initialState';
-import { ConsultantClass, GameOverPayload, GameStats } from '../types/game';
+import { ConsultantClass, GameOverPayload, RawStats } from '../types/game';
 import { StatBar } from '../components/StatBar';
 import { createGameConfig } from './config';
 import { GAME_OVER, STATS_CHANGED } from './eventKeys';
 
 interface PhaserGameProps {
   selectedClass: ConsultantClass;
-  onGameOver: (outcome: 'win' | 'lose', stats: GameStats, reason: string | null) => void;
+  onGameOver: (outcome: 'win' | 'lose', stats: RawStats, reason: string | null) => void;
 }
 
 export function PhaserGame({ selectedClass, onGameOver }: PhaserGameProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const gameRef = useRef<Phaser.Game | null>(null);
   const onGameOverRef = useRef(onGameOver);
-  const [stats, setStats] = useState<GameStats>({ ...INITIAL_STATS });
+  const [stats, setStats] = useState<RawStats>({ ...INITIAL_STATS });
 
   useEffect(() => {
     onGameOverRef.current = onGameOver;
@@ -27,7 +27,7 @@ export function PhaserGame({ selectedClass, onGameOver }: PhaserGameProps) {
     const game = new Phaser.Game(createGameConfig(containerRef.current, selectedClass));
     gameRef.current = game;
 
-    const onStatsChanged = (newStats: GameStats) => {
+    const onStatsChanged = (newStats: RawStats) => {
       setStats({ ...newStats });
     };
 

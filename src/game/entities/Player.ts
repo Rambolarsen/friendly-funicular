@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
-import { GameStats } from '../../types/game';
-import { applyStatChanges, checkWinLose } from '../../engine/gameEngine';
+import { RawStats } from '../../types/game';
+import { applyStatChanges } from '../../domain/rules/statRules';
+import { checkWinLose } from '../../domain/rules/progressionRules';
 import { EnemyType } from '../levels/types';
 
 const MOVE_SPEED = 200;
@@ -12,7 +13,7 @@ const ATTACK_HEIGHT = 32;
 const INVINCIBILITY_DURATION = 800; // ms after taking damage
 
 /** Passive kill bonuses keyed by class id */
-const CLASS_KILL_BONUSES: Record<string, Partial<GameStats>> = {
+const CLASS_KILL_BONUSES: Record<string, Partial<RawStats>> = {
   architect:      { technicalDebt: -4 },
   developer:      { deliveryProgress: 3 },
   ux:             { clientHappiness: 4 },
@@ -130,9 +131,9 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
    */
   takeDamage(
     amount: number,
-    currentStats: GameStats,
+    currentStats: RawStats,
     time: number,
-  ): { newStats: GameStats; died: boolean } {
+  ): { newStats: RawStats; died: boolean } {
     if (time < this.invincibleUntil) return { newStats: currentStats, died: false };
     this.invincibleUntil = time + INVINCIBILITY_DURATION;
 
@@ -146,8 +147,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
    * Returns the stat bonus earned for killing the given enemy type
    * plus the class passive kill modifier.
    */
-  getKillBonus(enemyType: EnemyType, classId: string): Partial<GameStats> {
-    const BASE: Record<EnemyType, Partial<GameStats>> = {
+  getKillBonus(enemyType: EnemyType, classId: string): Partial<RawStats> {
+    const BASE: Record<EnemyType, Partial<RawStats>> = {
       [EnemyType.Goblin]:  { deliveryProgress: 8,  budget: -5 },
       [EnemyType.Wraith]:  { deliveryProgress: 6,  teamMorale: -3 },
       [EnemyType.Troll]:   { deliveryProgress: 12, budget: -10 },
@@ -160,8 +161,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     return mergePartialStats(base, classBonus);
   }
 
-  private randomInternBonus(): Partial<GameStats> {
-    const keys: (keyof GameStats)[] = [
+  private randomInternBonus(): Partial<RawStats> {
+    const keys: (keyof RawStats)[] = [
       'budget', 'clientHappiness', 'technicalDebt', 'teamMorale',
       'deliveryProgress', 'complianceRisk',
     ];
@@ -171,9 +172,9 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   }
 }
 
-function mergePartialStats(a: Partial<GameStats>, b: Partial<GameStats>): Partial<GameStats> {
+function mergePartialStats(a: Partial<RawStats>, b: Partial<RawStats>): Partial<RawStats> {
   const result = { ...a };
-  for (const k of Object.keys(b) as (keyof GameStats)[]) {
+  for (const k of Object.keys(b) as (keyof RawStats)[]) {
     result[k] = ((result[k] ?? 0) + (b[k] ?? 0)) as number;
   }
   return result;

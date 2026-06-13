@@ -1,6 +1,6 @@
-import { GameStats } from '../types/game';
+import { RawStats } from '../types/game';
 
-export const INITIAL_STATS: GameStats = {
+export const INITIAL_STATS: RawStats = {
   budget: 100,
   clientHappiness: 50,
   technicalDebt: 0,
