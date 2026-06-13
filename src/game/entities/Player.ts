@@ -143,6 +143,11 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     return { newStats, died: this.hp <= 0 || outcome === 'lose' };
   }
 
+  /** Grant invincibility frames (e.g. after respawn) without dealing damage. */
+  grantInvincibility(time: number) {
+    this.invincibleUntil = time + INVINCIBILITY_DURATION;
+  }
+
   /**
    * Returns the stat bonus earned for killing the given enemy type
    * plus the class passive kill modifier.

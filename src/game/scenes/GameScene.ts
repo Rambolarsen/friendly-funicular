@@ -87,6 +87,18 @@ export class GameScene extends Phaser.Scene {
 
     this.player.update(time);
 
+    // Fall-off detection: respawn with stat penalty
+    if (this.player.y > this.currentLevel.height + 50) {
+      const { x, y } = this.currentLevel.playerStart;
+      this.player.setPosition(x, y);
+      (this.player.body as Phaser.Physics.Arcade.Body).setVelocity(0, 0);
+      this.player.grantInvincibility(time);
+      this.stats = applyStatChanges(this.stats, { budget: -10, teamMorale: -10 });
+      this.emitStats();
+      this.updateHUD();
+      this.checkWinLose();
+    }
+
     // Attack hits enemies
     for (const obj of this.enemies.getChildren()) {
       const enemy = obj as Enemy;
