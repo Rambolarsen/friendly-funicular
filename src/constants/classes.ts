@@ -1,4 +1,4 @@
-import { ConsultantClass } from '../types/game';
+import { ConsultantClass, RawStats } from '../types/game';
 
 export const CONSULTANT_CLASSES: ConsultantClass[] = [
   {
@@ -66,3 +66,15 @@ export const CONSULTANT_CLASSES: ConsultantClass[] = [
     flavor: '"I used ChatGPT for the whole backend, is that okay?"',
   },
 ];
+
+/** Passive stat bonuses applied when this class kills an enemy. */
+export const CLASS_MODIFIERS: Record<string, Partial<RawStats>> = {
+  architect:      { technicalDebt: -4 },
+  developer:      { deliveryProgress: 3 },
+  ux:             { clientHappiness: 4 },
+  datascientist:  { deliveryProgress: 4, complianceRisk: 2 },
+  pm:             { teamMorale: 3 },
+  security:       { complianceRisk: -5 },
+  accountmanager: { clientHappiness: 3 },
+  intern:         {},
+};
