@@ -23,8 +23,8 @@ import { RemotePlayer } from '../entities/RemotePlayer';
 import { RemoteEnemy } from '../entities/RemoteEnemy';
 import { hordeArena } from '../levels/hordeArena';
 import type { StatePayload, MultiplayerGameOverPayload } from '../../types/multiplayer';
+import { soundManager } from '../sound';
 
-const PLAYER_ATTACK_DAMAGE = 25;
 const LEVELS: LevelData[] = [level1, level2, level3, bossLevel];
 const LOOT_STATS: Record<LootType, Partial<RawStats>> = {
   budget: { budget: 15 },
@@ -147,6 +147,7 @@ export class GameScene extends Phaser.Scene {
     if (this.isMultiplayer) {
       this.setupMultiplayer();
     }
+    soundManager.startBgm();
   }
 
   update(time: number) {
@@ -196,7 +197,7 @@ export class GameScene extends Phaser.Scene {
       if (!enemy.active) continue;
       if (this.player.isAttackHitting(enemy)) {
         this.cameras.main.shake(80, 0.003);
-        const died = enemy.takeDamage(PLAYER_ATTACK_DAMAGE, this.player.x);
+        const died = enemy.takeDamage(this.player.getAttackDamage(), this.player.x);
         if (died) this.onEnemyDied(enemy as Enemy);
       }
     }
@@ -313,6 +314,7 @@ export class GameScene extends Phaser.Scene {
         enemy.x,
       );
       if (!didTakeDamage) return;
+      soundManager.playerHurt();
       this.stats = newStats;
       this.cameras.main.shake(250, 0.008);
       this.emitStats();
@@ -331,6 +333,7 @@ export class GameScene extends Phaser.Scene {
       const { newStats, died, didTakeDamage } = this.player.takeDamage(8, this.stats, time, projectile.x);
       projectile.destroy();
       if (!didTakeDamage) return;
+      soundManager.playerHurt();
       this.stats = newStats;
       this.cameras.main.shake(250, 0.008);
       this.emitStats();
@@ -343,6 +346,7 @@ export class GameScene extends Phaser.Scene {
       const type = (loot as Phaser.GameObjects.Image).getData('lootType') as LootType;
       const changes = LOOT_STATS[type];
       this.stats = applyStatChanges(this.stats, changes);
+      soundManager.lootPickup();
       this.emitStats();
       (loot as Phaser.GameObjects.GameObject).destroy();
     });
@@ -577,6 +581,9 @@ export class GameScene extends Phaser.Scene {
     if (isBoss) {
       this.bossDefeated = true;
       this.boss = null;
+      soundManager.bossDeath();
+    } else {
+      soundManager.enemyDeath();
     }
 
     this.cameras.main.shake(150, 0.005);
@@ -589,6 +596,8 @@ export class GameScene extends Phaser.Scene {
   private onPlayerDied() {
     if (this.levelComplete) return;
     this.levelComplete = true;
+    soundManager.stopBgm();
+    soundManager.gameOver();
     const { reason } = checkWinLose(this.stats, this.bossDefeated);
     this.game.events.emit(GAME_OVER, {
       outcome: 'lose',
@@ -600,6 +609,7 @@ export class GameScene extends Phaser.Scene {
   private onLevelComplete() {
     if (this.levelComplete) return;
     this.levelComplete = true;
+    soundManager.levelComplete();
 
     this.stats = applyStatChanges(this.stats, { deliveryProgress: 10 });
     this.emitStats();
@@ -616,6 +626,12 @@ export class GameScene extends Phaser.Scene {
     if (!outcome) return;
     if (this.levelComplete) return;
     this.levelComplete = true;
+    soundManager.stopBgm();
+    if (outcome === 'win') {
+      soundManager.win();
+    } else {
+      soundManager.gameOver();
+    }
     this.game.events.emit(GAME_OVER, { outcome, stats: this.stats, reason });
   }
 
