@@ -7,7 +7,7 @@
 
 ## Overview
 
-Add co-op networked multiplayer to Dungeons & Deliverables as an **endless horde survival mode**. Players join from separate browsers, share a stat pool, and fight off continuously spawning enemies together. The existing single-player game is fully preserved — a new "Multiplayer" button on the start screen opens the multiplayer path.
+Add co-op networked multiplayer to Dungeons & Deliverables as an **endless horde survival mode**. Players join from separate browsers, each maintain their own stat pool, and fight off continuously spawning enemies together. The game ends when the team gets overrun (too many enemies alive at once). An end screen shows each player's individual stats — everyone wins together, but you can see who pulled their weight. The existing single-player game is fully preserved — a new "Multiplayer" button on the start screen opens the multiplayer path.
 
 ---
 
@@ -31,12 +31,22 @@ Add co-op networked multiplayer to Dungeons & Deliverables as an **endless horde
 - Max 20 concurrent enemies to prevent total chaos.
 - Enemies spawn at the level edges (off-screen left/right).
 
-### Shared Stats
-- All players in a room share a single `RawStats` pool.
-- Kills by any player apply that player's class kill bonus to the shared pool.
-- Damage and loot affect the shared pool.
-- **Lose condition:** any stat crosses its threshold (existing `checkWinLose` logic) → game over for all.
-- **No win condition** — survive as long as possible.
+### Player Stats (Individual)
+- Each player maintains their own `RawStats` pool.
+- Kills reward **your** stats using your class kill bonus — killing more = better personal stats.
+- Taking damage penalizes **your** stats.
+- Loot pickups benefit only the player who collects them.
+- Stats are **not** a lose condition in multiplayer — they are a personal performance score.
+
+### Lose Condition: Overrun
+- The server tracks the count of living enemies at all times.
+- If **20 or more enemies** are alive simultaneously → the team is overrun → game over for all.
+- Killing enemies fast keeps the team alive. Slow players indirectly hurt the team.
+
+### End Screen: Debrief
+- On game over, the server sends each player's final `RawStats` to all clients.
+- The end screen shows a side-by-side stat comparison for all players.
+- No explicit winner — the debrief is informational and lets players see each other's performance naturally.
 
 ### Mid-game Joining
 - Players can join an active game at any time.
@@ -71,9 +81,9 @@ Clients send input only; they never self-report positions.
 ```ts
 {
   type: 'state',
-  players: { id: string, x: number, y: number, classId: string, hp: number }[],
+  players: { id: string, x: number, y: number, classId: string, hp: number, stats: RawStats }[],
   enemies: { id: string, type: string, x: number, y: number, hp: number }[],
-  stats: RawStats
+  enemyCount: number   // current living enemy count (shown in HUD)
 }
 ```
 
@@ -81,7 +91,7 @@ Clients send input only; they never self-report positions.
 ```ts
 { type: 'player_joined', id: string, classId: string, name: string }
 { type: 'player_left', id: string }
-{ type: 'game_over', reason: string }
+{ type: 'game_over', reason: 'overrun', playerStats: { id: string, name: string, classId: string, stats: RawStats }[] }
 { type: 'boss_spawned' }
 { type: 'boss_defeated' }
 ```
@@ -130,7 +140,8 @@ server/
 | `src/App.tsx` | Add `'lobby'` to `GamePhase` (also update `src/types/game.ts`). Render `LobbyScreen` during lobby phase. Pass `SocketClient` instance and `roomId` to `PhaserGame` for multiplayer games. |
 | `src/game/scenes/GameScene.ts` | In multiplayer mode: load `hordeArena`, spawn `RemotePlayer` sprites from server state, delegate enemy spawning to server events, remove exit trigger. |
 | `src/game/entities/Player.ts` | In multiplayer mode: send input events via `SocketClient` each frame instead of resolving movement locally. Position is updated from server state. |
-| `src/game/PhaserGame.tsx` | Accept optional `socket` and `roomId` props. In multiplayer mode, listen to server `state` events to update remote players. Show player name tags above sprites. |
+| `src/game/PhaserGame.tsx` | Accept optional `socket` and `roomId` props. In multiplayer mode, listen to server `state` events to update remote players. Show player name tags above sprites. HUD shows your own stats + a live enemy count. |
+| `src/screens/EndScreen.tsx` | In multiplayer mode, show side-by-side `RawStats` debrief for all players instead of the single-player win/lose screen. |
 | `src/game/scenes/BootScene.ts` | Preload new dungeon background tileset/image. |
 
 ### Removed Files
