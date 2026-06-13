@@ -82,6 +82,12 @@ The canonical class IDs used in `CLASS_KILL_BONUSES` (passive kill stat bonuses)
 ### Placeholder graphics
 No external sprite assets. All textures are generated in `BootScene.create()` using `this.make.graphics()` + `generateTexture()`. Easy to replace with real sprites later by adding a `preload()` step.
 
+## Session Hygiene
+
+When a task is complete, **start a new Copilot CLI session** before beginning the next one. This keeps the context window small and focused, which improves reasoning quality and reduces token costs.
+
+> ✅ Task done → close session → open new session → start next task.
+
 ## Keeping This File Updated
 
 When making changes to the project, update this file if any of the following change:
