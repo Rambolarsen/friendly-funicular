@@ -2,15 +2,21 @@ import Phaser from 'phaser';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { INITIAL_STATS } from '../constants/initialState';
 import { AbilityUsedPayload, ConsultantClass, GameOverPayload, RawStats } from '../types/game';
+import type { MultiplayerGameOverPayload } from '../types/multiplayer';
 import { StatBar } from '../components/StatBar';
 import { getAbilityCooldownState, getAbilityDefinition } from './abilities';
 import { createGameConfig } from './config';
 import { ABILITY_USED, GAME_OVER, LEVEL_STARTED, STATS_CHANGED } from './eventKeys';
+import { SocketClient } from './network/SocketClient';
 
 interface PhaserGameProps {
   selectedClass: ConsultantClass;
-  onGameOver: (outcome: 'win' | 'lose', stats: RawStats, reason: string | null) => void;
+  onGameOver: (outcome: 'win' | 'lose', stats: RawStats, reason: string | null, multiplayerResult?: MultiplayerResult) => void;
+  socket?: SocketClient;
+  roomId?: string;
 }
+
+export type MultiplayerResult = MultiplayerGameOverPayload;
 
 const ABILITY_THEME_BY_CLASS: Record<string, { accent: string; accentSoft: string; shadow: string }> = {
   architect: { accent: '#a78bfa', accentSoft: 'rgba(167, 139, 250, 0.22)', shadow: 'rgba(167, 139, 250, 0.35)' },
@@ -23,7 +29,7 @@ const ABILITY_THEME_BY_CLASS: Record<string, { accent: string; accentSoft: strin
   intern: { accent: '#e879f9', accentSoft: 'rgba(232, 121, 249, 0.22)', shadow: 'rgba(232, 121, 249, 0.35)' },
 };
 
-export function PhaserGame({ selectedClass, onGameOver }: PhaserGameProps) {
+export function PhaserGame({ selectedClass, onGameOver, socket, roomId }: PhaserGameProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const gameRef = useRef<Phaser.Game | null>(null);
   const onGameOverRef = useRef(onGameOver);
@@ -56,15 +62,20 @@ export function PhaserGame({ selectedClass, onGameOver }: PhaserGameProps) {
   useEffect(() => {
     if (!containerRef.current || gameRef.current) return;
 
-    const game = new Phaser.Game(createGameConfig(containerRef.current, selectedClass));
+    const game = new Phaser.Game(createGameConfig(containerRef.current, selectedClass, socket, roomId));
     gameRef.current = game;
+
+    if (socket && roomId) {
+      game.registry.set('multiplayerSocket', socket);
+      game.registry.set('multiplayerRoomId', roomId);
+    }
 
     const onStatsChanged = (newStats: RawStats) => {
       setStats({ ...newStats });
     };
 
-    const onGameOverEvent = ({ outcome, stats: finalStats, reason }: GameOverPayload) => {
-      onGameOverRef.current(outcome, finalStats, reason);
+    const onGameOverEvent = (payload: GameOverPayload & { multiplayerResult?: MultiplayerResult }) => {
+      onGameOverRef.current(payload.outcome, payload.stats, payload.reason ?? null, payload.multiplayerResult);
     };
 
     const onAbilityUsed = ({ name, cooldownMs }: AbilityUsedPayload) => {
