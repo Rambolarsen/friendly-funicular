@@ -33,6 +33,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   private attackVictims = new WeakSet<object>();
   private invincibilityTween: Phaser.Tweens.Tween | null = null;
   private jumpBufferTimer = 0;
+  currentAnimKey = 'player-idle';
   private static readonly JUMP_BUFFER_MS = 120;
 
   constructor(scene: Phaser.Scene, x: number, y: number, classId: string) {
@@ -103,10 +104,13 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
     // Animations
     if (!onGround) {
+      this.currentAnimKey = `${this.classId}-player-jump`;
       this.play(`${this.classId}-player-jump`, true);
     } else if (goLeft || goRight) {
+      this.currentAnimKey = `${this.classId}-player-walk`;
       this.play(`${this.classId}-player-walk`, true);
     } else {
+      this.currentAnimKey = `${this.classId}-player-idle`;
       this.play(`${this.classId}-player-idle`, true);
     }
 
