@@ -1,3 +1,5 @@
+import type { MultiplayerGameOverPayload } from './multiplayer';
+
 export type RawStats = {
   budget: number;
   clientHappiness: number;
@@ -23,4 +25,5 @@ export type GameOverPayload = {
   outcome: 'win' | 'lose';
   stats: RawStats;
   reason: string | null;
+  multiplayerResult?: MultiplayerGameOverPayload;
 };
