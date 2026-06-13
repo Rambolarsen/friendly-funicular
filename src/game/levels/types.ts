@@ -7,7 +7,8 @@ export enum EnemyType {
 
 export type PlatformData = { x: number; y: number; w: number; h: number };
 export type EnemySpawnData = { type: EnemyType; x: number; y: number };
-export type LootData = { type: 'budget' | 'morale' | 'debt'; x: number; y: number };
+export type LootType = 'budget' | 'morale' | 'debt' | 'compliance';
+export type LootData = { type: LootType; x: number; y: number };
 
 export type LevelData = {
   width: number;

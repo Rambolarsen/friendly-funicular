@@ -18,6 +18,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   maxHp: number = MAX_HP;
   classId: string;
   private attackCooldownTimer = 0;
+  private abilityCooldownUntil = 0;
+  private projectileImmunityUntil = 0;
   private invincibleUntil = 0;
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private wasd!: {
@@ -28,6 +30,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   private attackKeys!: { z: Phaser.Input.Keyboard.Key; x: Phaser.Input.Keyboard.Key };
   /** Visible hitbox graphic shown briefly during attack */
   private attackBox: Phaser.GameObjects.Rectangle | null = null;
+  private attackVictims = new WeakSet<object>();
+  private invincibilityTween: Phaser.Tweens.Tween | null = null;
   private jumpBufferTimer = 0;
   private static readonly JUMP_BUFFER_MS = 120;
 
@@ -106,9 +110,9 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       this.play('player-idle', true);
     }
 
-    // Tint while invincible
-    const isInvincible = time < this.invincibleUntil;
-    this.setAlpha(isInvincible ? 0.5 : 1);
+    if (time >= this.invincibleUntil) {
+      this.clearInvincibilityVisuals();
+    }
   }
 
   private showAttackBox() {
@@ -116,8 +120,17 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     const boxX = this.x + offsetX / 2 + (this.flipX ? -12 : 12);
     const boxY = this.y;
 
+    this.attackVictims = new WeakSet<object>();
     this.attackBox = this.scene.add.rectangle(boxX, boxY, ATTACK_RANGE, ATTACK_HEIGHT, 0xffffff, 0.35);
     this.attackBox.setDepth(20);
+    this.attackBox.setScale(0.75, 0.8);
+    this.scene.tweens.add({
+      targets: this.attackBox,
+      scaleX: 1,
+      scaleY: 1,
+      duration: 80,
+      ease: 'Quad.easeOut',
+    });
     this.scene.time.delayedCall(150, () => {
       this.attackBox?.destroy();
       this.attackBox = null;
@@ -125,10 +138,13 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   }
 
   /** Returns true if the attack hitbox overlaps the given world bounds */
-  isAttackHitting(targetBounds: Phaser.Geom.Rectangle): boolean {
+  isAttackHitting(target: Phaser.GameObjects.GameObject & { getBounds: () => Phaser.Geom.Rectangle }): boolean {
     if (!this.attackBox) return false;
+    if (this.attackVictims.has(target)) return false;
     const hitBounds = this.attackBox.getBounds();
-    return Phaser.Geom.Rectangle.Overlaps(hitBounds, targetBounds);
+    if (!Phaser.Geom.Rectangle.Overlaps(hitBounds, target.getBounds())) return false;
+    this.attackVictims.add(target);
+    return true;
   }
 
   /**
@@ -139,19 +155,44 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     amount: number,
     currentStats: RawStats,
     time: number,
-  ): { newStats: RawStats; died: boolean } {
-    if (time < this.invincibleUntil) return { newStats: currentStats, died: false };
-    this.invincibleUntil = time + INVINCIBILITY_DURATION;
+    sourceX?: number,
+  ): { newStats: RawStats; died: boolean; didTakeDamage: boolean } {
+    if (time < this.invincibleUntil) return { newStats: currentStats, died: false, didTakeDamage: false };
+    this.grantInvincibility(time);
+
+    if (typeof sourceX === 'number') {
+      const body = this.body as Phaser.Physics.Arcade.Body;
+      const direction = this.x >= sourceX ? 1 : -1;
+      body.setVelocityX(direction * 250);
+      body.setVelocityY(-80);
+    }
 
     this.hp = Math.max(0, this.hp - amount);
     const newStats = applyStatChanges(currentStats, { teamMorale: -5, budget: -3 });
     const { outcome } = checkWinLose(newStats, false);
-    return { newStats, died: this.hp <= 0 || outcome === 'lose' };
+    return { newStats, died: this.hp <= 0 || outcome === 'lose', didTakeDamage: true };
   }
 
   /** Grant invincibility frames (e.g. after respawn) without dealing damage. */
   grantInvincibility(time: number) {
     this.invincibleUntil = time + INVINCIBILITY_DURATION;
+    this.startInvincibilityTween();
+  }
+
+  isAbilityReady(time: number): boolean {
+    return time >= this.abilityCooldownUntil;
+  }
+
+  startAbilityCooldown(time: number, cooldownMs: number): void {
+    this.abilityCooldownUntil = time + cooldownMs;
+  }
+
+  grantProjectileImmunity(time: number, durationMs: number): void {
+    this.projectileImmunityUntil = time + durationMs;
+  }
+
+  isProjectileImmune(time: number): boolean {
+    return time < this.projectileImmunityUntil;
   }
 
   /**
@@ -180,6 +221,26 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     const key = keys[Math.floor(Math.random() * keys.length)];
     const value = Math.floor(Math.random() * 20) - 8; // -8 to +11
     return { [key]: value };
+  }
+
+  private startInvincibilityTween(): void {
+    this.clearInvincibilityVisuals();
+    this.setAlpha(1);
+    this.invincibilityTween = this.scene.tweens.add({
+      targets: this,
+      alpha: 0.3,
+      duration: 90,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Linear',
+    });
+  }
+
+  private clearInvincibilityVisuals(): void {
+    this.invincibilityTween?.stop();
+    this.invincibilityTween?.remove();
+    this.invincibilityTween = null;
+    this.setAlpha(1);
   }
 }
 

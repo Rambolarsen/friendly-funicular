@@ -5,7 +5,7 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 import tseslint from 'typescript-eslint'
 
 export default tseslint.config(
-  { ignores: ['dist', 'server/dist', 'node_modules', 'public/assets/kenney_extract'] },
+  { ignores: ['dist', '.test-dist', 'server/dist', 'node_modules', 'public/assets/kenney_extract'] },
   {
     files: ['**/*.{ts,tsx,js,jsx}'],
     extends: [js.configs.recommended, ...tseslint.configs.recommended],

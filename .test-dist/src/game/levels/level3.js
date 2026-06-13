@@ -1,0 +1,52 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.level3 = void 0;
+const types_1 = require("./types");
+exports.level3 = {
+    width: 3600,
+    height: 540,
+    playerStart: { x: 80, y: 420 },
+    exitX: 3500,
+    platforms: [
+        { x: 0, y: 490, w: 440, h: 20 },
+        { x: 540, y: 490, w: 360, h: 20 },
+        { x: 1020, y: 490, w: 320, h: 20 },
+        { x: 1460, y: 490, w: 360, h: 20 },
+        { x: 1940, y: 490, w: 300, h: 20 },
+        { x: 2360, y: 490, w: 320, h: 20 },
+        { x: 2820, y: 490, w: 300, h: 20 },
+        { x: 3260, y: 490, w: 340, h: 20 },
+        { x: 260, y: 380, w: 120, h: 16 },
+        { x: 470, y: 280, w: 110, h: 16 },
+        { x: 720, y: 200, w: 140, h: 16 },
+        { x: 980, y: 340, w: 120, h: 16 },
+        { x: 1190, y: 240, w: 120, h: 16 },
+        { x: 1430, y: 170, w: 130, h: 16 },
+        { x: 1700, y: 320, w: 120, h: 16 },
+        { x: 1960, y: 220, w: 120, h: 16 },
+        { x: 2200, y: 150, w: 140, h: 16 },
+        { x: 2460, y: 320, w: 120, h: 16 },
+        { x: 2720, y: 230, w: 130, h: 16 },
+        { x: 3000, y: 170, w: 140, h: 16 },
+    ],
+    enemies: [
+        { type: types_1.EnemyType.Troll, x: 260, y: 440 },
+        { type: types_1.EnemyType.Spectre, x: 700, y: 440 },
+        { type: types_1.EnemyType.Troll, x: 1120, y: 440 },
+        { type: types_1.EnemyType.Wraith, x: 1380, y: 440 },
+        { type: types_1.EnemyType.Spectre, x: 1700, y: 440 },
+        { type: types_1.EnemyType.Troll, x: 1980, y: 440 },
+        { type: types_1.EnemyType.Wraith, x: 2280, y: 440 },
+        { type: types_1.EnemyType.Spectre, x: 2560, y: 440 },
+        { type: types_1.EnemyType.Troll, x: 2860, y: 440 },
+        { type: types_1.EnemyType.Spectre, x: 3180, y: 440 },
+        { type: types_1.EnemyType.Troll, x: 3400, y: 440 },
+    ],
+    loots: [
+        { type: 'budget', x: 280, y: 350 },
+        { type: 'morale', x: 730, y: 170 },
+        { type: 'debt', x: 1450, y: 140 },
+        { type: 'compliance', x: 2210, y: 120 },
+        { type: 'budget', x: 3010, y: 140 },
+    ],
+};
