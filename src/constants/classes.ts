@@ -8,6 +8,8 @@ export const CONSULTANT_CLASSES: ConsultantClass[] = [
     abilityName: 'Draft Architecture',
     description: 'Slows every active enemy with a five-second architecture freeze and trims technical debt.',
     flavor: '"Have you considered a microservices approach?"',
+    color: '#f59e0b',
+    spriteFrame: 11,
   },
   {
     id: 'developer',
@@ -16,6 +18,8 @@ export const CONSULTANT_CLASSES: ConsultantClass[] = [
     abilityName: 'Ship Hotfix',
     description: 'Blasts nearby enemies with an emergency patch and nudges delivery back on track.',
     flavor: '"It works on my machine."',
+    color: '#22d3ee',
+    spriteFrame: 12,
   },
   {
     id: 'ux',
@@ -24,6 +28,8 @@ export const CONSULTANT_CLASSES: ConsultantClass[] = [
     abilityName: 'User Research',
     description: 'Freezes the room for a focused research pulse that boosts client happiness.',
     flavor: '"But did you test it with actual users?"',
+    color: '#f472b6',
+    spriteFrame: 13,
   },
   {
     id: 'datascientist',
@@ -32,6 +38,8 @@ export const CONSULTANT_CLASSES: ConsultantClass[] = [
     abilityName: 'Run the Model',
     description: 'Turns every loot drop into a glowing model sprint: faster delivery, higher compliance risk.',
     flavor: '"The model is 94% accurate. On training data."',
+    color: '#a78bfa',
+    spriteFrame: 14,
   },
   {
     id: 'pm',
@@ -39,7 +47,9 @@ export const CONSULTANT_CLASSES: ConsultantClass[] = [
     emoji: '📋',
     abilityName: 'Call a Meeting',
     description: 'Sends every enemy marching the wrong way and lifts team morale with meeting energy.',
-    flavor: '"According to my updated Gantt chart…"'
+    flavor: '"According to my updated Gantt chart…"',
+    color: '#34d399',
+    spriteFrame: 15,
   },
   {
     id: 'security',
@@ -48,6 +58,8 @@ export const CONSULTANT_CLASSES: ConsultantClass[] = [
     abilityName: 'Deploy Firewall',
     description: 'Deletes incoming projectiles and shrugs off ranged pressure behind a temporary firewall.',
     flavor: '"That feature is a GDPR violation waiting to happen."',
+    color: '#fb923c',
+    spriteFrame: 16,
   },
   {
     id: 'accountmanager',
@@ -56,6 +68,8 @@ export const CONSULTANT_CLASSES: ConsultantClass[] = [
     abilityName: 'Escalate',
     description: 'Locks down the nearest enemy in a one-on-one escalation that steadies the client.',
     flavor: '"I\'ll set up a call."',
+    color: '#fbbf24',
+    spriteFrame: 17,
   },
   {
     id: 'intern',
@@ -64,6 +78,8 @@ export const CONSULTANT_CLASSES: ConsultantClass[] = [
     abilityName: 'Wildcard',
     description: 'Copies someone else’s move most of the time and occasionally invents a stat disaster.',
     flavor: '"I used ChatGPT for the whole backend, is that okay?"',
+    color: '#e879f9',
+    spriteFrame: 18,
   },
 ];
 

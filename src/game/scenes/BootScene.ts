@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { CONSULTANT_CLASSES } from '../../constants/classes';
 
 /**
  * Loads Kenney Pixel Platformer sprite assets and defines all character animations.
@@ -65,6 +66,26 @@ export class BootScene extends Phaser.Scene {
       frames: this.anims.generateFrameNumbers('chars', { frames: [21, 22] }),
       frameRate: 5, repeat: -1,
     });
+
+    // ── Per-class player animations (single frame each) ──────────────────────
+    for (const cls of CONSULTANT_CLASSES) {
+      const f = cls.spriteFrame;
+      this.anims.create({
+        key: `${cls.id}-player-walk`,
+        frames: this.anims.generateFrameNumbers('chars', { frames: [f] }),
+        frameRate: 1, repeat: -1,
+      });
+      this.anims.create({
+        key: `${cls.id}-player-idle`,
+        frames: this.anims.generateFrameNumbers('chars', { frames: [f] }),
+        frameRate: 1, repeat: -1,
+      });
+      this.anims.create({
+        key: `${cls.id}-player-jump`,
+        frames: this.anims.generateFrameNumbers('chars', { frames: [f] }),
+        frameRate: 1, repeat: 0,
+      });
+    }
 
     this.scene.start('GameScene');
   }
