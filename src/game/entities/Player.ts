@@ -3,12 +3,13 @@ import { RawStats } from '../../types/game';
 import { applyStatChanges } from '../../domain/rules/statRules';
 import { checkWinLose } from '../../domain/rules/progressionRules';
 import { EnemyType } from '../levels/types';
-import { CLASS_MODIFIERS } from '../../constants/classes';
+import { CLASS_MODIFIERS, CLASS_ATTACK_DAMAGE, CONSULTANT_CLASSES } from '../../constants/classes';
+import { ATTACK_USED } from '../eventKeys';
 
 const MOVE_SPEED = 200;
 const JUMP_VELOCITY = -860;
 const MAX_HP = 100;
-const ATTACK_COOLDOWN = 400; // ms
+export const ATTACK_COOLDOWN = 400; // ms
 const ATTACK_RANGE = 48;
 const ATTACK_HEIGHT = 32;
 const INVINCIBILITY_DURATION = 800; // ms after taking damage
@@ -99,6 +100,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     if (attackPressed && time > this.attackCooldownTimer) {
       this.attackCooldownTimer = time + ATTACK_COOLDOWN;
       this.showAttackBox();
+      this.scene.game.events.emit(ATTACK_USED, { cooldownMs: ATTACK_COOLDOWN });
     }
 
     // Animations
@@ -181,6 +183,16 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
   isAbilityReady(time: number): boolean {
     return time >= this.abilityCooldownUntil;
+  }
+
+  /** Returns the base damage this class deals with a basic attack. */
+  getAttackDamage(): number {
+    const damage = CLASS_ATTACK_DAMAGE[this.classId];
+    if (damage === null || damage === undefined) {
+      // Intern: random 10–40
+      return 10 + Math.floor(Math.random() * 31);
+    }
+    return damage;
   }
 
   startAbilityCooldown(time: number, cooldownMs: number): void {

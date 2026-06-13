@@ -19,7 +19,6 @@ import { level2 } from '../levels/level2';
 import { level3 } from '../levels/level3';
 import { bossLevel } from '../levels/bossLevel';
 
-const PLAYER_ATTACK_DAMAGE = 25;
 const LEVELS: LevelData[] = [level1, level2, level3, bossLevel];
 const LOOT_STATS: Record<LootType, Partial<RawStats>> = {
   budget: { budget: 15 },
@@ -130,7 +129,7 @@ export class GameScene extends Phaser.Scene {
       if (!enemy.active) continue;
       if (this.player.isAttackHitting(enemy)) {
         this.cameras.main.shake(80, 0.003);
-        const died = enemy.takeDamage(PLAYER_ATTACK_DAMAGE, this.player.x);
+        const died = enemy.takeDamage(this.player.getAttackDamage(), this.player.x);
         if (died) this.onEnemyDied(enemy as Enemy);
       }
     }
