@@ -3,6 +3,7 @@ import { RawStats } from '../../types/game';
 import { applyStatChanges } from '../../domain/rules/statRules';
 import { checkWinLose } from '../../domain/rules/progressionRules';
 import { EnemyType } from '../levels/types';
+import { CLASS_MODIFIERS } from '../../constants/classes';
 
 const MOVE_SPEED = 200;
 const JUMP_VELOCITY = -520;
@@ -11,18 +12,6 @@ const ATTACK_COOLDOWN = 400; // ms
 const ATTACK_RANGE = 48;
 const ATTACK_HEIGHT = 32;
 const INVINCIBILITY_DURATION = 800; // ms after taking damage
-
-/** Passive kill bonuses keyed by class id */
-const CLASS_KILL_BONUSES: Record<string, Partial<RawStats>> = {
-  architect:      { technicalDebt: -4 },
-  developer:      { deliveryProgress: 3 },
-  ux:             { clientHappiness: 4 },
-  datascientist:  { deliveryProgress: 4, complianceRisk: 2 },
-  pm:             { teamMorale: 3 },
-  security:       { complianceRisk: -5 },
-  accountmanager: { clientHappiness: 3 },
-  intern:         {}, // randomised at kill-time
-};
 
 export class Player extends Phaser.Physics.Arcade.Sprite {
   hp: number;
@@ -157,7 +146,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     const base = BASE[enemyType] ?? {};
     const classBonus = classId === 'intern'
       ? this.randomInternBonus()
-      : (CLASS_KILL_BONUSES[classId] ?? {});
+      : (CLASS_MODIFIERS[classId] ?? {});
     return mergePartialStats(base, classBonus);
   }
 

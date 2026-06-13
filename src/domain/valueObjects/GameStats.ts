@@ -1,14 +1,6 @@
 import { RawStats } from '../../types/game';
 import { clampStat, clampStatChange } from '../rules/statRules';
-
-const INITIAL: RawStats = {
-  budget: 100,
-  clientHappiness: 50,
-  technicalDebt: 0,
-  teamMorale: 70,
-  deliveryProgress: 0,
-  complianceRisk: 20,
-};
+import { INITIAL_STATS } from '../../constants/initialState';
 
 export class GameStats {
   readonly budget: number;
@@ -28,7 +20,7 @@ export class GameStats {
   }
 
   static initial(): GameStats {
-    return new GameStats(INITIAL);
+    return new GameStats(INITIAL_STATS);
   }
 
   static from(raw: RawStats): GameStats {
