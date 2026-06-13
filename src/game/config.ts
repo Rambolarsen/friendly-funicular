@@ -3,10 +3,13 @@ import { INITIAL_STATS } from '../constants/initialState';
 import { ConsultantClass } from '../types/game';
 import { BootScene } from './scenes/BootScene';
 import { GameScene } from './scenes/GameScene';
+import type { SocketClient } from './network/SocketClient';
 
 export function createGameConfig(
   parent: HTMLElement,
   selectedClass: ConsultantClass,
+  socketClient?: SocketClient,
+  roomId?: string,
 ): Phaser.Types.Core.GameConfig {
   return {
     type: Phaser.AUTO,
@@ -28,6 +31,9 @@ export function createGameConfig(
         game.registry.set('selectedClass', selectedClass);
         game.registry.set('stats', { ...INITIAL_STATS });
         game.registry.set('levelIndex', 0);
+        game.registry.set('socketClient', socketClient ?? null);
+        game.registry.set('roomId', roomId ?? null);
+        game.registry.set('multiplayer', Boolean(socketClient && roomId));
       },
     },
   };

@@ -90,6 +90,14 @@ export class BootScene extends Phaser.Scene {
       });
     }
 
-    this.scene.start('GameScene');
+    const socketClient = this.registry.get('socketClient');
+    const roomId = this.registry.get('roomId') as string | null;
+    const multiplayer = Boolean(this.registry.get('multiplayer'));
+
+    this.scene.start('GameScene', {
+      multiplayer,
+      socketClient,
+      roomId: roomId ?? undefined,
+    });
   }
 }

@@ -6,6 +6,7 @@ type Props = {
   stats: RawStats;
   loseReason: string | null;
   selectedClass: ConsultantClass | null;
+  multiplayerResult?: any;
   onRestart: () => void;
 };
 
