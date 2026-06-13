@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { CONSULTANT_CLASSES } from '../../constants/classes';
+import { generateClassTextures } from '../sprites/generateClassTextures';
 
 /**
  * Loads Kenney Pixel Platformer sprite assets and defines all character animations.
@@ -22,6 +23,8 @@ export class BootScene extends Phaser.Scene {
   }
 
   create() {
+    // Generate custom pixel-art textures for each consultant class
+    generateClassTextures(this);
     // ── Player animations (frames 0-3: blue alien, row 0) ────────────────────
     this.anims.create({
       key: 'player-walk',
@@ -68,20 +71,20 @@ export class BootScene extends Phaser.Scene {
 
     // ── Per-class player animations (single frame each) ──────────────────────
     for (const cls of CONSULTANT_CLASSES) {
-      const f = cls.spriteFrame;
+      const key = `${cls.id}-sprite`;
       this.anims.create({
         key: `${cls.id}-player-walk`,
-        frames: this.anims.generateFrameNumbers('chars', { frames: [f] }),
+        frames: [{ key }],
         frameRate: 1, repeat: -1,
       });
       this.anims.create({
         key: `${cls.id}-player-idle`,
-        frames: this.anims.generateFrameNumbers('chars', { frames: [f] }),
+        frames: [{ key }],
         frameRate: 1, repeat: -1,
       });
       this.anims.create({
         key: `${cls.id}-player-jump`,
-        frames: this.anims.generateFrameNumbers('chars', { frames: [f] }),
+        frames: [{ key }],
         frameRate: 1, repeat: 0,
       });
     }

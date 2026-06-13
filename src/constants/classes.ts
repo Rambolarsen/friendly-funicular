@@ -9,7 +9,6 @@ export const CONSULTANT_CLASSES: ConsultantClass[] = [
     description: 'Master of diagrams and abstractions. Reduces technical debt but clients grow impatient.',
     flavor: '"Have you considered a microservices approach?"',
     color: '#f59e0b',
-    spriteFrame: 11,
   },
   {
     id: 'developer',
@@ -19,7 +18,6 @@ export const CONSULTANT_CLASSES: ConsultantClass[] = [
     description: 'Gets things done fast. Delivery progress surges but technical debt may follow.',
     flavor: '"It works on my machine."',
     color: '#22d3ee',
-    spriteFrame: 12,
   },
   {
     id: 'ux',
@@ -29,7 +27,6 @@ export const CONSULTANT_CLASSES: ConsultantClass[] = [
     description: 'Clarifies requirements and boosts client happiness. Enemies hate being understood.',
     flavor: '"But did you test it with actual users?"',
     color: '#f472b6',
-    spriteFrame: 13,
   },
   {
     id: 'datascientist',
@@ -39,7 +36,6 @@ export const CONSULTANT_CLASSES: ConsultantClass[] = [
     description: 'Devastating in AI rooms. Powerful but risky — compliance risk may spike.',
     flavor: '"The model is 94% accurate. On training data."',
     color: '#a78bfa',
-    spriteFrame: 14,
   },
   {
     id: 'pm',
@@ -49,7 +45,6 @@ export const CONSULTANT_CLASSES: ConsultantClass[] = [
     description: 'Restores budget and morale. May frustrate stakeholders with new slide decks.',
     flavor: '"According to my updated Gantt chart…"',
     color: '#34d399',
-    spriteFrame: 15,
   },
   {
     id: 'security',
@@ -59,7 +54,6 @@ export const CONSULTANT_CLASSES: ConsultantClass[] = [
     description: 'Slays compliance threats. Slows delivery but keeps the regulators away.',
     flavor: '"That feature is a GDPR violation waiting to happen."',
     color: '#fb923c',
-    spriteFrame: 16,
   },
   {
     id: 'accountmanager',
@@ -69,7 +63,6 @@ export const CONSULTANT_CLASSES: ConsultantClass[] = [
     description: 'Prevents client happiness from dropping once per encounter. Smooth talker.',
     flavor: '"I\'ll set up a call."',
     color: '#fbbf24',
-    spriteFrame: 17,
   },
   {
     id: 'intern',
@@ -79,7 +72,6 @@ export const CONSULTANT_CLASSES: ConsultantClass[] = [
     description: 'Total wildcard. Massive upside or catastrophic disaster. No in-between.',
     flavor: '"I used ChatGPT for the whole backend, is that okay?"',
     color: '#e879f9',
-    spriteFrame: 18,
   },
 ];
 

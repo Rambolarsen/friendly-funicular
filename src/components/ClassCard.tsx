@@ -1,4 +1,6 @@
+import { useEffect, useRef } from 'react';
 import { ConsultantClass } from '../types/game';
+import { CLASS_SPRITE_DATA, makeBasePixels } from '../constants/classSprites';
 
 type Props = {
   cls: ConsultantClass;
@@ -6,19 +8,42 @@ type Props = {
   selected?: boolean;
 };
 
-function spriteStyle(frame: number): React.CSSProperties {
-  const col = frame % 9;
-  const row = Math.floor(frame / 9);
-  return {
-    width: 48,
-    height: 48,
-    imageRendering: 'pixelated',
-    backgroundImage: "url('/assets/sprites/chars.png')",
-    backgroundSize: '448px 148px',
-    backgroundPosition: `-${col * 50}px -${row * 50}px`,
-    backgroundRepeat: 'no-repeat',
-    display: 'inline-block',
-  };
+const DISPLAY_SIZE = 48;
+const SPRITE_SIZE  = 24;
+const SCALE        = DISPLAY_SIZE / SPRITE_SIZE;
+
+function SpriteCanvas({ classId }: { classId: string }) {
+  const ref = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = ref.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const data = CLASS_SPRITE_DATA[classId];
+    if (!data) return;
+
+    ctx.clearRect(0, 0, DISPLAY_SIZE, DISPLAY_SIZE);
+    const pixels = makeBasePixels(data.color, data.hat, data.item);
+    pixels.forEach((color, i) => {
+      if (!color) return;
+      const x = i % SPRITE_SIZE;
+      const y = Math.floor(i / SPRITE_SIZE);
+      ctx.fillStyle = color;
+      ctx.fillRect(x * SCALE, y * SCALE, SCALE, SCALE);
+    });
+  }, [classId]);
+
+  return (
+    <canvas
+      ref={ref}
+      width={DISPLAY_SIZE}
+      height={DISPLAY_SIZE}
+      style={{ imageRendering: 'pixelated' }}
+      aria-hidden="true"
+    />
+  );
 }
 
 export function ClassCard({ cls, onSelect, selected }: Props) {
@@ -38,7 +63,7 @@ export function ClassCard({ cls, onSelect, selected }: Props) {
       `}
     >
       <div className="mb-2">
-        <span style={spriteStyle(cls.spriteFrame)} aria-hidden="true" />
+        <SpriteCanvas classId={cls.id} />
       </div>
       <div className="mb-1 text-sm font-bold" style={{ color: cls.color }}>{cls.name}</div>
       <div className="mb-2 text-xs font-semibold italic text-amber-400">✨ {cls.abilityName}</div>

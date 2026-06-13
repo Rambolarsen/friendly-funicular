@@ -15,7 +15,6 @@ export type ConsultantClass = {
   description: string;
   flavor: string;
   color: string;       // CSS accent color for border and name text
-  spriteFrame: number; // Frame index in chars.png (9×3 spritesheet, 24×24 frames, 1px gap)
 };
 
 export type GamePhase = 'start' | 'playing' | 'end';
