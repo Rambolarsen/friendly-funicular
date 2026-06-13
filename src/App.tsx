@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { INITIAL_STATS } from './constants/initialState';
 import { EndScreen } from './screens/EndScreen';
 import { StartScreen } from './screens/StartScreen';
 import { ConsultantClass, GamePhase, GameStats } from './types/game';
+import { PhaserGame } from './game/PhaserGame';
 
 type GameResult = {
   outcome: 'win' | 'lose';
@@ -43,24 +43,15 @@ function App() {
   }
 
   // 'playing' phase — PhaserGame component mounts here (Issue #4)
-  // Placeholder: simulate a quick loss so the flow is testable
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-gray-950 text-gray-100">
-      <p className="text-lg font-bold tracking-widest text-purple-300">🎮 Loading game engine...</p>
-      <button
-        onClick={() => {
-          setResult({
-            outcome: 'lose',
-            stats: { ...INITIAL_STATS },
-            loseReason: 'The game engine has not been wired up yet.',
-            selectedClass: selectedClass!,
-          });
+    <div className="w-screen h-screen bg-gray-950">
+      <PhaserGame
+        selectedClass={selectedClass!}
+        onGameOver={(outcome, stats, reason) => {
+          setResult({ outcome, stats, loseReason: reason, selectedClass: selectedClass! });
           setPhase('end');
         }}
-        className="rounded-xl bg-red-800 px-6 py-3 text-sm font-bold tracking-widest text-white hover:bg-red-700"
-      >
-        Simulate game over
-      </button>
+      />
     </div>
   );
 }
