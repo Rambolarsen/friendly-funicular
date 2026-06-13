@@ -177,30 +177,37 @@ export function PhaserGame({ selectedClass, onGameOver }: PhaserGameProps) {
 
       <div className="group pointer-events-auto absolute left-56 top-2">
         <div
-          className="flex h-10 w-10 items-center justify-center rounded-xl p-[3px] shadow-lg transition-transform duration-150 group-hover:scale-105"
+          className={`flex h-12 w-12 items-center justify-center rounded-xl p-[3px] shadow-lg transition-transform duration-150 group-hover:scale-105${attackUi.progress >= 1 ? ' attack-ready' : ''}`}
           style={{
-            background: `conic-gradient(#94a3b8 0deg ${attackUi.progress * 360}deg, rgba(15, 23, 42, 0.72) ${attackUi.progress * 360}deg 360deg)`,
-            boxShadow: '0 0 12px rgba(148, 163, 184, 0.3)',
+            background: `conic-gradient(#f97316 0deg ${attackUi.progress * 360}deg, rgba(15, 23, 42, 0.72) ${attackUi.progress * 360}deg 360deg)`,
+            boxShadow: attackUi.progress >= 1
+              ? '0 0 18px rgba(251, 146, 60, 0.7), 0 0 6px rgba(239, 68, 68, 0.4)'
+              : '0 0 10px rgba(251, 146, 60, 0.25)',
           }}
         >
           <div
-            className="flex h-full w-full items-center justify-center rounded-[8px] border border-slate-700/60 bg-slate-950/90 backdrop-blur-sm"
-            style={{ color: '#94a3b8' }}
+            className="flex h-full w-full flex-col items-center justify-center rounded-[9px] border bg-slate-950/90 backdrop-blur-sm"
+            style={{
+              borderColor: attackUi.progress >= 1 ? 'rgba(251,146,60,0.55)' : 'rgba(251,146,60,0.2)',
+              color: attackUi.progress >= 1 ? '#fb923c' : '#9a5c30',
+            }}
           >
-            <span className="text-base font-black uppercase leading-none">E</span>
+            <span className="text-[9px] leading-none">⚔️</span>
+            <span className="text-[11px] font-black uppercase leading-none mt-[2px]">E</span>
           </div>
         </div>
-        <div className="pointer-events-none absolute left-0 top-full mt-2 w-48 rounded-lg border border-slate-700/60 bg-slate-950/95 p-3 opacity-0 shadow-lg transition-all duration-150 group-hover:translate-y-0 group-hover:opacity-100">
-          <p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-300">
+        <div className="pointer-events-none absolute left-0 top-full mt-2 w-48 rounded-lg border border-orange-700/40 bg-slate-950/95 p-3 opacity-0 shadow-lg transition-all duration-150 group-hover:translate-y-0 group-hover:opacity-100"
+          style={{ boxShadow: '0 10px 24px rgba(251, 146, 60, 0.2)' }}>
+          <p className="text-[10px] font-black uppercase tracking-[0.24em] text-orange-400">
             E · Basic Attack
           </p>
           <p className="mt-2 text-[11px] text-slate-100">
             Melee strike that deals damage to enemies in range.
           </p>
-          <p className="mt-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+          <p className="mt-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-orange-500">
             {attackDamageLabel}
           </p>
-          <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+          <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-orange-500">
             {attackUi.remainingLabel} · {(ATTACK_COOLDOWN / 1000).toFixed(1)}s cooldown
           </p>
         </div>

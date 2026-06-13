@@ -119,20 +119,72 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     const boxY = this.y;
 
     this.attackVictims = new WeakSet<object>();
-    this.attackBox = this.scene.add.rectangle(boxX, boxY, ATTACK_RANGE, ATTACK_HEIGHT, 0xffffff, 0.35);
+    // Invisible hitbox — used only for collision detection
+    this.attackBox = this.scene.add.rectangle(boxX, boxY, ATTACK_RANGE, ATTACK_HEIGHT, 0xffffff, 0);
     this.attackBox.setDepth(20);
-    this.attackBox.setScale(0.75, 0.8);
-    this.scene.tweens.add({
-      targets: this.attackBox,
-      scaleX: 1,
-      scaleY: 1,
-      duration: 80,
-      ease: 'Quad.easeOut',
-    });
+    this.spawnSlashEffect(boxX, boxY, this.flipX ? -1 : 1);
     this.scene.time.delayedCall(150, () => {
       this.attackBox?.destroy();
       this.attackBox = null;
     });
+  }
+
+  private spawnSlashEffect(x: number, y: number, dirX: number) {
+    // Three angled slash lines forming a claw pattern
+    const slashAngles = [-28, 0, 28];
+    const slashColors = [0xff6a00, 0xffffff, 0xff6a00];
+
+    for (let i = 0; i < slashAngles.length; i++) {
+      const line = this.scene.add.rectangle(x, y, ATTACK_RANGE * 1.3, 5, slashColors[i], 0.92);
+      line.setDepth(21);
+      line.setRotation(Phaser.Math.DegToRad(slashAngles[i]));
+      line.setScale(0.2, 1);
+      this.scene.tweens.add({
+        targets: line,
+        scaleX: 1,
+        alpha: 0,
+        duration: 160,
+        ease: 'Quad.easeOut',
+        onComplete: () => { line.destroy(); },
+      });
+    }
+
+    // Bright impact flash at the tip of the swing
+    const flashX = x + dirX * 14;
+    const flash = this.scene.add.ellipse(flashX, y, 22, 22, 0xffffff, 0.9);
+    flash.setDepth(22);
+    this.scene.tweens.add({
+      targets: flash,
+      scaleX: 2.2,
+      scaleY: 2.2,
+      alpha: 0,
+      duration: 130,
+      ease: 'Quad.easeOut',
+      onComplete: () => { flash.destroy(); },
+    });
+
+    // Gold sparks shooting outward
+    const sparkCount = 5;
+    for (let i = 0; i < sparkCount; i++) {
+      const spread = Phaser.Math.FloatBetween(-0.7, 0.7);
+      const baseAngle = dirX > 0 ? 0 : Math.PI;
+      const angle = baseAngle + spread;
+      const dist = Phaser.Math.Between(24, 52);
+      const spark = this.scene.add.rectangle(x, y, 7, 3, 0xffd040, 1);
+      spark.setDepth(22);
+      spark.setRotation(angle);
+      this.scene.tweens.add({
+        targets: spark,
+        x: x + Math.cos(angle) * dist,
+        y: y + Math.sin(angle) * dist,
+        alpha: 0,
+        scaleX: 0.3,
+        scaleY: 0.4,
+        duration: 210,
+        ease: 'Cubic.easeOut',
+        onComplete: () => { spark.destroy(); },
+      });
+    }
   }
 
   /** Returns true if the attack hitbox overlaps the given world bounds */
