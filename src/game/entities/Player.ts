@@ -3,12 +3,13 @@ import { RawStats } from '../../types/game';
 import { applyStatChanges } from '../../domain/rules/statRules';
 import { checkWinLose } from '../../domain/rules/progressionRules';
 import { EnemyType } from '../levels/types';
-import { CLASS_MODIFIERS } from '../../constants/classes';
+import { CLASS_MODIFIERS, CLASS_ATTACK_DAMAGE, CONSULTANT_CLASSES } from '../../constants/classes';
+import { ATTACK_USED } from '../eventKeys';
 
 const MOVE_SPEED = 200;
 const JUMP_VELOCITY = -860;
 const MAX_HP = 100;
-const ATTACK_COOLDOWN = 400; // ms
+export const ATTACK_COOLDOWN = 400; // ms
 const ATTACK_RANGE = 48;
 const ATTACK_HEIGHT = 32;
 const INVINCIBILITY_DURATION = 800; // ms after taking damage
@@ -27,7 +28,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     left: Phaser.Input.Keyboard.Key;
     right: Phaser.Input.Keyboard.Key;
   };
-  private attackKeys!: { z: Phaser.Input.Keyboard.Key; x: Phaser.Input.Keyboard.Key };
+  private attackKey!: Phaser.Input.Keyboard.Key;
   /** Visible hitbox graphic shown briefly during attack */
   private attackBox: Phaser.GameObjects.Rectangle | null = null;
   private attackVictims = new WeakSet<object>();
@@ -57,10 +58,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       left:  kb.addKey(Phaser.Input.Keyboard.KeyCodes.A),
       right: kb.addKey(Phaser.Input.Keyboard.KeyCodes.D),
     };
-    this.attackKeys = {
-      z: kb.addKey(Phaser.Input.Keyboard.KeyCodes.Z),
-      x: kb.addKey(Phaser.Input.Keyboard.KeyCodes.X),
-    };
+    this.attackKey = kb.addKey(Phaser.Input.Keyboard.KeyCodes.E);
   }
 
   update(time: number) {
@@ -94,11 +92,11 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     }
 
     // Attack
-    const attackPressed = Phaser.Input.Keyboard.JustDown(this.attackKeys.z)
-      || Phaser.Input.Keyboard.JustDown(this.attackKeys.x);
+    const attackPressed = Phaser.Input.Keyboard.JustDown(this.attackKey);
     if (attackPressed && time > this.attackCooldownTimer) {
       this.attackCooldownTimer = time + ATTACK_COOLDOWN;
       this.showAttackBox();
+      this.scene.game.events.emit(ATTACK_USED, { cooldownMs: ATTACK_COOLDOWN });
     }
 
     // Animations
@@ -121,20 +119,72 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     const boxY = this.y;
 
     this.attackVictims = new WeakSet<object>();
-    this.attackBox = this.scene.add.rectangle(boxX, boxY, ATTACK_RANGE, ATTACK_HEIGHT, 0xffffff, 0.35);
+    // Invisible hitbox — used only for collision detection
+    this.attackBox = this.scene.add.rectangle(boxX, boxY, ATTACK_RANGE, ATTACK_HEIGHT, 0xffffff, 0);
     this.attackBox.setDepth(20);
-    this.attackBox.setScale(0.75, 0.8);
-    this.scene.tweens.add({
-      targets: this.attackBox,
-      scaleX: 1,
-      scaleY: 1,
-      duration: 80,
-      ease: 'Quad.easeOut',
-    });
+    this.spawnSlashEffect(boxX, boxY, this.flipX ? -1 : 1);
     this.scene.time.delayedCall(150, () => {
       this.attackBox?.destroy();
       this.attackBox = null;
     });
+  }
+
+  private spawnSlashEffect(x: number, y: number, dirX: number) {
+    // Three angled slash lines forming a claw pattern
+    const slashAngles = [-28, 0, 28];
+    const slashColors = [0xff6a00, 0xffffff, 0xff6a00];
+
+    for (let i = 0; i < slashAngles.length; i++) {
+      const line = this.scene.add.rectangle(x, y, ATTACK_RANGE * 1.3, 5, slashColors[i], 0.92);
+      line.setDepth(21);
+      line.setRotation(Phaser.Math.DegToRad(slashAngles[i]));
+      line.setScale(0.2, 1);
+      this.scene.tweens.add({
+        targets: line,
+        scaleX: 1,
+        alpha: 0,
+        duration: 160,
+        ease: 'Quad.easeOut',
+        onComplete: () => { line.destroy(); },
+      });
+    }
+
+    // Bright impact flash at the tip of the swing
+    const flashX = x + dirX * 14;
+    const flash = this.scene.add.ellipse(flashX, y, 22, 22, 0xffffff, 0.9);
+    flash.setDepth(22);
+    this.scene.tweens.add({
+      targets: flash,
+      scaleX: 2.2,
+      scaleY: 2.2,
+      alpha: 0,
+      duration: 130,
+      ease: 'Quad.easeOut',
+      onComplete: () => { flash.destroy(); },
+    });
+
+    // Gold sparks shooting outward
+    const sparkCount = 5;
+    for (let i = 0; i < sparkCount; i++) {
+      const spread = Phaser.Math.FloatBetween(-0.7, 0.7);
+      const baseAngle = dirX > 0 ? 0 : Math.PI;
+      const angle = baseAngle + spread;
+      const dist = Phaser.Math.Between(24, 52);
+      const spark = this.scene.add.rectangle(x, y, 7, 3, 0xffd040, 1);
+      spark.setDepth(22);
+      spark.setRotation(angle);
+      this.scene.tweens.add({
+        targets: spark,
+        x: x + Math.cos(angle) * dist,
+        y: y + Math.sin(angle) * dist,
+        alpha: 0,
+        scaleX: 0.3,
+        scaleY: 0.4,
+        duration: 210,
+        ease: 'Cubic.easeOut',
+        onComplete: () => { spark.destroy(); },
+      });
+    }
   }
 
   /** Returns true if the attack hitbox overlaps the given world bounds */
@@ -181,6 +231,16 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
   isAbilityReady(time: number): boolean {
     return time >= this.abilityCooldownUntil;
+  }
+
+  /** Returns the base damage this class deals with a basic attack. */
+  getAttackDamage(): number {
+    const damage = CLASS_ATTACK_DAMAGE[this.classId];
+    if (damage === null || damage === undefined) {
+      // Intern: random 10–40
+      return 10 + Math.floor(Math.random() * 31);
+    }
+    return damage;
   }
 
   startAbilityCooldown(time: number, cooldownMs: number): void {

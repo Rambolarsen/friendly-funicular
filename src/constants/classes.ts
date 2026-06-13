@@ -86,3 +86,18 @@ export const CLASS_MODIFIERS: Record<string, Partial<RawStats>> = {
   accountmanager: { clientHappiness: 3 },
   intern:         {},
 };
+
+/**
+ * Base damage dealt by each class's basic melee attack.
+ * `null` means the damage is random (intern wildcard: 10–40).
+ */
+export const CLASS_ATTACK_DAMAGE: Record<string, number | null> = {
+  architect:      20,
+  developer:      30,
+  ux:             20,
+  datascientist:  25,
+  pm:             15,
+  security:       35,
+  accountmanager: 25,
+  intern:         null,
+};

@@ -50,3 +50,7 @@ export type AbilityUsedPayload = {
   name: string;
   cooldownMs: number;
 };
+
+export type AttackUsedPayload = {
+  cooldownMs: number;
+};

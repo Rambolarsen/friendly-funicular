@@ -11,3 +11,6 @@ export const ABILITY_USED = 'ability-used';
 
 /** Emitted by scenes when a new level scene has started. Payload: none */
 export const LEVEL_STARTED = 'level-started';
+
+/** Emitted when the player fires a basic attack. Payload: AttackUsedPayload */
+export const ATTACK_USED = 'attack-used';
