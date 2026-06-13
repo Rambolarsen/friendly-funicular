@@ -187,12 +187,12 @@ export function PhaserGame({ selectedClass, onGameOver }: PhaserGameProps) {
             className="flex h-full w-full items-center justify-center rounded-[8px] border border-slate-700/60 bg-slate-950/90 backdrop-blur-sm"
             style={{ color: '#94a3b8' }}
           >
-            <span className="text-base font-black uppercase leading-none">Z</span>
+            <span className="text-base font-black uppercase leading-none">E</span>
           </div>
         </div>
         <div className="pointer-events-none absolute left-0 top-full mt-2 w-48 rounded-lg border border-slate-700/60 bg-slate-950/95 p-3 opacity-0 shadow-lg transition-all duration-150 group-hover:translate-y-0 group-hover:opacity-100">
           <p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-300">
-            Z · Basic Attack
+            E · Basic Attack
           </p>
           <p className="mt-2 text-[11px] text-slate-100">
             Melee strike that deals damage to enemies in range.

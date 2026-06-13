@@ -28,7 +28,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     left: Phaser.Input.Keyboard.Key;
     right: Phaser.Input.Keyboard.Key;
   };
-  private attackKeys!: { z: Phaser.Input.Keyboard.Key; x: Phaser.Input.Keyboard.Key };
+  private attackKey!: Phaser.Input.Keyboard.Key;
   /** Visible hitbox graphic shown briefly during attack */
   private attackBox: Phaser.GameObjects.Rectangle | null = null;
   private attackVictims = new WeakSet<object>();
@@ -58,10 +58,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       left:  kb.addKey(Phaser.Input.Keyboard.KeyCodes.A),
       right: kb.addKey(Phaser.Input.Keyboard.KeyCodes.D),
     };
-    this.attackKeys = {
-      z: kb.addKey(Phaser.Input.Keyboard.KeyCodes.Z),
-      x: kb.addKey(Phaser.Input.Keyboard.KeyCodes.X),
-    };
+    this.attackKey = kb.addKey(Phaser.Input.Keyboard.KeyCodes.E);
   }
 
   update(time: number) {
@@ -95,8 +92,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     }
 
     // Attack
-    const attackPressed = Phaser.Input.Keyboard.JustDown(this.attackKeys.z)
-      || Phaser.Input.Keyboard.JustDown(this.attackKeys.x);
+    const attackPressed = Phaser.Input.Keyboard.JustDown(this.attackKey);
     if (attackPressed && time > this.attackCooldownTimer) {
       this.attackCooldownTimer = time + ATTACK_COOLDOWN;
       this.showAttackBox();
