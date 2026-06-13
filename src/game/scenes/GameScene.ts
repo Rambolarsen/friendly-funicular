@@ -18,6 +18,11 @@ import { level1 } from '../levels/level1';
 import { level2 } from '../levels/level2';
 import { level3 } from '../levels/level3';
 import { bossLevel } from '../levels/bossLevel';
+import { SocketClient } from '../network/SocketClient';
+import { RemotePlayer } from '../entities/RemotePlayer';
+import { RemoteEnemy } from '../entities/RemoteEnemy';
+import { hordeArena } from '../levels/hordeArena';
+import type { StatePayload, MultiplayerGameOverPayload } from '../../types/multiplayer';
 
 const PLAYER_ATTACK_DAMAGE = 25;
 const LEVELS: LevelData[] = [level1, level2, level3, bossLevel];
@@ -53,17 +58,43 @@ export class GameScene extends Phaser.Scene {
   private lastAbilityUsedAt: number | null = null;
   private projectileTelegraphSnapshot: Array<{ x: number; y: number }> = [];
 
+  // Multiplayer
+  private isMultiplayer = false;
+  private socketClient: SocketClient | null = null;
+  private roomId: string | null = null;
+  private remotePlayers = new Map<string, RemotePlayer>();
+  private remoteEnemies = new Map<string, RemoteEnemy>();
+  private enemyCountText: Phaser.GameObjects.Text | null = null;
+  private positionUpdateTimer = 0;
+  private readonly POSITION_UPDATE_INTERVAL = 50; // ms
+  private socketCleanups: Array<() => void> = [];
+
   constructor() {
     super({ key: 'GameScene' });
   }
 
-  init(data?: { levelIndex?: number }) {
+  init(data?: {
+    levelIndex?: number;
+    bossLevel?: boolean;
+    multiplayer?: boolean;
+    socketClient?: SocketClient;
+    roomId?: string;
+  }) {
     const storedLevelIndex = this.registry.get('levelIndex');
     this.levelIndex = data?.levelIndex
       ?? (typeof storedLevelIndex === 'number' ? storedLevelIndex : 0);
-    this.isBossLevel = this.levelIndex === LEVELS.length - 1;
+    this.isBossLevel = data?.bossLevel ?? (this.levelIndex === LEVELS.length - 1);
     this.bossDefeated = false;
     this.levelComplete = false;
+    this.isMultiplayer = data?.multiplayer ?? false;
+    this.socketClient = data?.socketClient ?? null;
+    this.roomId = data?.roomId ?? null;
+    this.registry.set('roomId', this.roomId);
+    this.remotePlayers.clear();
+    this.remoteEnemies.clear();
+    this.enemyCountText = null;
+    this.positionUpdateTimer = 0;
+    this.socketCleanups = [];
     this.lastAbilityUsedAt = null;
     this.projectileTelegraphSnapshot = [];
   }
@@ -72,7 +103,7 @@ export class GameScene extends Phaser.Scene {
     this.stats = GameStatsVO.from(this.registry.get('stats') as RawStats).toPlain();
     this.classId = this.registry.get('selectedClass')?.id ?? 'developer';
 
-    this.currentLevel = LEVELS[this.levelIndex] ?? LEVELS[0];
+    this.currentLevel = this.isMultiplayer ? hordeArena : (LEVELS[this.levelIndex] ?? LEVELS[0]);
 
     // World bounds
     this.physics.world.setBounds(0, 0, this.currentLevel.width, this.currentLevel.height);
@@ -102,14 +133,42 @@ export class GameScene extends Phaser.Scene {
     this.setupColliders();
     this.setupHUD();
     this.setupAbilityTelegraph();
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, this.shutdown, this);
     this.game.events.emit(LEVEL_STARTED);
     this.emitStats(); // initial HUD sync
+
+    if (this.isMultiplayer) {
+      this.setupMultiplayer();
+    }
   }
 
   update(time: number) {
     if (this.levelComplete) return;
 
     this.player.update(time);
+    if (this.isMultiplayer) {
+      // Send position to server
+      this.positionUpdateTimer += this.sys.game.loop.delta;
+      if (this.positionUpdateTimer >= this.POSITION_UPDATE_INTERVAL) {
+        this.positionUpdateTimer = 0;
+        this.socketClient!.sendPlayerUpdate({
+          x: this.player.x,
+          y: this.player.y,
+          flipX: this.player.flipX,
+          animKey: (this.player as unknown as { currentAnimKey?: string }).currentAnimKey ?? 'player-idle',
+          hp: this.player.hp,
+          stats: this.stats,
+        });
+      }
+
+      // Attack against RemoteEnemies
+      for (const [enemyId, re] of this.remoteEnemies) {
+        if (this.player.isAttackHitting(re)) {
+          this.socketClient!.attackEnemy({ enemyId, damage: PLAYER_ATTACK_DAMAGE });
+        }
+      }
+      return; // skip local enemy logic in multiplayer
+    }
     this.updateAbilityTelegraph();
 
     // Fall-off detection: respawn with stat penalty
@@ -310,6 +369,98 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
+  private setupMultiplayer(): void {
+    const sc = this.socketClient!;
+
+    // Enemy count HUD
+    this.enemyCountText = this.add.text(this.scale.width / 2, 10,
+      'Enemies: 0 / 20',
+      { fontSize: '13px', color: '#f87171', backgroundColor: '#00000088', padding: { x: 6, y: 3 } },
+    ).setScrollFactor(0).setDepth(100).setOrigin(0.5, 0);
+
+    // Apply server state tick
+    const offState = sc.onState((payload: StatePayload) => {
+      this.applyServerState(payload);
+    });
+
+    // Remote player joins
+    const offJoined = sc.onPlayerJoined(({ id, classId, name }) => {
+      if (!this.remotePlayers.has(id)) {
+        const rp = new RemotePlayer(this, {
+          id,
+          name,
+          classId,
+          x: 100,
+          y: 500,
+          flipX: false,
+          animKey: 'player-idle',
+          hp: 100,
+          stats: {} as never,
+        });
+        this.remotePlayers.set(id, rp);
+      }
+    });
+
+    // Remote player leaves
+    const offLeft = sc.onPlayerLeft(({ id }) => {
+      this.remotePlayers.get(id)?.destroy();
+      this.remotePlayers.delete(id);
+    });
+
+    // Enemy killed confirmation
+    const offEnemyDied = sc.onEnemyDied(({ enemyId }) => {
+      this.remoteEnemies.get(enemyId)?.destroy();
+      this.remoteEnemies.delete(enemyId);
+    });
+
+    // Game over
+    const offGameOver = sc.onGameOver((payload: MultiplayerGameOverPayload) => {
+      this.game.events.emit(GAME_OVER, {
+        outcome: 'lose',
+        stats: this.stats,
+        reason: 'The team was overrun. 20 enemies on site.',
+        multiplayerResult: payload,
+      });
+    });
+
+    this.socketCleanups = [offState, offJoined, offLeft, offEnemyDied, offGameOver];
+  }
+
+  private applyServerState(payload: StatePayload): void {
+    const sc = this.socketClient!;
+
+    // Update enemy count HUD
+    this.enemyCountText?.setText(`Enemies: ${payload.enemyCount} / 20`);
+
+    // Sync remote players (skip own socket id)
+    const myId = sc.id;
+    for (const ps of payload.players) {
+      if (ps.id === myId) continue;
+      let rp = this.remotePlayers.get(ps.id);
+      if (!rp) {
+        rp = new RemotePlayer(this, ps);
+        this.remotePlayers.set(ps.id, rp);
+      }
+      rp.applyState(ps);
+    }
+
+    // Sync remote enemies
+    const seen = new Set<string>();
+    for (const es of payload.enemies) {
+      seen.add(es.id);
+      let re = this.remoteEnemies.get(es.id);
+      if (!re) {
+        re = new RemoteEnemy(this, es);
+        this.remoteEnemies.set(es.id, re);
+      }
+      re.applyState(es);
+    }
+    // Remove enemies no longer in server state
+    for (const [id, re] of this.remoteEnemies) {
+      if (!seen.has(id)) { re.destroy(); this.remoteEnemies.delete(id); }
+    }
+  }
+
   private updateAbilityTelegraph() {
     const telegraph = this.abilityTelegraphGraphics;
     const aura = this.abilityAura;
@@ -459,6 +610,11 @@ export class GameScene extends Phaser.Scene {
     if (this.levelComplete) return;
     this.levelComplete = true;
     this.game.events.emit(GAME_OVER, { outcome, stats: this.stats, reason });
+  }
+
+  shutdown(): void {
+    this.socketCleanups.forEach((fn) => fn());
+    this.socketCleanups = [];
   }
 }
 
