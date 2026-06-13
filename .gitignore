@@ -26,6 +26,9 @@ dist-ssr
 # Brainstorming / superpowers session files
 .superpowers/
 
+# Test compilation output
+.test-dist/
+
 # Downloaded asset archives (sprites are committed individually)
 public/assets/kenney_pixel-platformer.zip
 public/assets/kenney_extract/
