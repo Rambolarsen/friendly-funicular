@@ -175,7 +175,7 @@ export function PhaserGame({ selectedClass, onGameOver }: PhaserGameProps) {
         <StatBar label="Compliance Risk"  value={stats.complianceRisk}   emoji="⚖️" inverted />
       </div>
 
-      <div className="group pointer-events-auto absolute left-56 top-2">
+      <div className="group pointer-events-auto absolute left-72 top-2">
         <div
           className={`flex h-12 w-12 items-center justify-center rounded-xl p-[3px] shadow-lg transition-transform duration-150 group-hover:scale-105${attackUi.progress >= 1 ? ' attack-ready' : ''}`}
           style={{
@@ -213,7 +213,7 @@ export function PhaserGame({ selectedClass, onGameOver }: PhaserGameProps) {
         </div>
       </div>
 
-      <div className="group pointer-events-auto absolute left-72 top-2">
+      <div className="group pointer-events-auto absolute left-56 top-2">
         <div
           className="flex h-14 w-14 items-center justify-center rounded-xl p-[3px] shadow-lg transition-transform duration-150 group-hover:scale-105"
           style={{
