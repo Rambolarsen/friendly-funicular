@@ -18,6 +18,7 @@ import { level1 } from '../levels/level1';
 import { level2 } from '../levels/level2';
 import { level3 } from '../levels/level3';
 import { bossLevel } from '../levels/bossLevel';
+import { soundManager } from '../sound';
 
 const LEVELS: LevelData[] = [level1, level2, level3, bossLevel];
 const LOOT_STATS: Record<LootType, Partial<RawStats>> = {
@@ -103,6 +104,7 @@ export class GameScene extends Phaser.Scene {
     this.setupAbilityTelegraph();
     this.game.events.emit(LEVEL_STARTED);
     this.emitStats(); // initial HUD sync
+    soundManager.startBgm();
   }
 
   update(time: number) {
@@ -246,6 +248,7 @@ export class GameScene extends Phaser.Scene {
         enemy.x,
       );
       if (!didTakeDamage) return;
+      soundManager.playerHurt();
       this.stats = newStats;
       this.cameras.main.shake(250, 0.008);
       this.emitStats();
@@ -264,6 +267,7 @@ export class GameScene extends Phaser.Scene {
       const { newStats, died, didTakeDamage } = this.player.takeDamage(8, this.stats, time, projectile.x);
       projectile.destroy();
       if (!didTakeDamage) return;
+      soundManager.playerHurt();
       this.stats = newStats;
       this.cameras.main.shake(250, 0.008);
       this.emitStats();
@@ -276,6 +280,7 @@ export class GameScene extends Phaser.Scene {
       const type = (loot as Phaser.GameObjects.Image).getData('lootType') as LootType;
       const changes = LOOT_STATS[type];
       this.stats = applyStatChanges(this.stats, changes);
+      soundManager.lootPickup();
       this.emitStats();
       (loot as Phaser.GameObjects.GameObject).destroy();
     });
@@ -418,6 +423,9 @@ export class GameScene extends Phaser.Scene {
     if (isBoss) {
       this.bossDefeated = true;
       this.boss = null;
+      soundManager.bossDeath();
+    } else {
+      soundManager.enemyDeath();
     }
 
     this.cameras.main.shake(150, 0.005);
@@ -430,6 +438,8 @@ export class GameScene extends Phaser.Scene {
   private onPlayerDied() {
     if (this.levelComplete) return;
     this.levelComplete = true;
+    soundManager.stopBgm();
+    soundManager.gameOver();
     const { reason } = checkWinLose(this.stats, this.bossDefeated);
     this.game.events.emit(GAME_OVER, {
       outcome: 'lose',
@@ -441,6 +451,7 @@ export class GameScene extends Phaser.Scene {
   private onLevelComplete() {
     if (this.levelComplete) return;
     this.levelComplete = true;
+    soundManager.levelComplete();
 
     this.stats = applyStatChanges(this.stats, { deliveryProgress: 10 });
     this.emitStats();
@@ -457,6 +468,12 @@ export class GameScene extends Phaser.Scene {
     if (!outcome) return;
     if (this.levelComplete) return;
     this.levelComplete = true;
+    soundManager.stopBgm();
+    if (outcome === 'win') {
+      soundManager.win();
+    } else {
+      soundManager.gameOver();
+    }
     this.game.events.emit(GAME_OVER, { outcome, stats: this.stats, reason });
   }
 }

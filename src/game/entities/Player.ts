@@ -5,6 +5,7 @@ import { checkWinLose } from '../../domain/rules/progressionRules';
 import { EnemyType } from '../levels/types';
 import { CLASS_MODIFIERS, CLASS_ATTACK_DAMAGE, CONSULTANT_CLASSES } from '../../constants/classes';
 import { ATTACK_USED } from '../eventKeys';
+import { soundManager } from '../sound';
 
 const MOVE_SPEED = 200;
 const JUMP_VELOCITY = -860;
@@ -89,6 +90,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     if (this.jumpBufferTimer > time && onGround) {
       body.setVelocityY(JUMP_VELOCITY);
       this.jumpBufferTimer = 0;
+      soundManager.jump();
     }
 
     // Attack
@@ -96,6 +98,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     if (attackPressed && time > this.attackCooldownTimer) {
       this.attackCooldownTimer = time + ATTACK_COOLDOWN;
       this.showAttackBox();
+      soundManager.attack();
       this.scene.game.events.emit(ATTACK_USED, { cooldownMs: ATTACK_COOLDOWN });
     }
 
