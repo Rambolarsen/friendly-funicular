@@ -17,6 +17,31 @@
           "endsPattern": "Local:.*localhost"
         }
       }
+    },
+    {
+      "label": "npm: server",
+      "type": "shell",
+      "command": "npm run server",
+      "group": "build",
+      "isBackground": true,
+      "problemMatcher": {
+        "pattern": {
+          "regexp": "^$"
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".",
+          "endsPattern": "listening|started|running"
+        }
+      }
+    },
+    {
+      "label": "Start Dev + Server",
+      "dependsOn": ["npm: dev", "npm: server"],
+      "dependsOrder": "parallel",
+      "group": "build",
+      "isBackground": true,
+      "problemMatcher": []
     }
   ]
 }
