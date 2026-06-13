@@ -2,17 +2,17 @@
 
 **Date:** 2026-06-13  
 **Scope:** Combat feel · Active class abilities · Two new levels  
-**Approach:** Sequential — combat feel first, then abilities, then levels
+**Approach:** Sequential vertical slices — combat feedback first, then active abilities, then level progression/content
 
 ---
 
 ## 1. Combat Feel
 
 ### Goal
-Make every hit, kill, and damage event feel impactful through screen shake, knockback, visual flash, and death burst effects — without touching visual assets (pixel art incoming separately).
+Make every hit, kill, and damage event feel more impactful with camera feedback, knockback, stronger hit reactions, and lightweight death particles — while staying inside the existing Phaser 3 scene/entity structure.
 
 ### Screen Shake
-Use Phaser's built-in `cameras.main.shake(duration, intensity)` on three events:
+Use Phaser's built-in `cameras.main.shake(duration, intensity)` at the points where `GameScene` already resolves combat outcomes:
 
 | Event | Duration | Intensity |
 |---|---|---|
@@ -20,39 +20,36 @@ Use Phaser's built-in `cameras.main.shake(duration, intensity)` on three events:
 | Player lands an attack hit | 80ms | 0.003 |
 | Enemy dies | 150ms | 0.005 |
 
-Triggered in `GameScene` at the point each event is already handled.
-
 ### Knockback
-- **Enemy hit**: apply a short horizontal velocity impulse (`±300 vx` for 100ms) on the enemy's physics body, in the direction away from the player. Implemented by extending `Enemy.takeDamage(amount, attackerX)` with an optional `attackerX` parameter. The impulse is applied as a one-shot velocity; the patrol AI resumes after 120ms via a `delayedCall`.
-- **Player hit**: apply `±250 vx` and `-80 vy` on the player's body away from the damage source. Added inside `Player.takeDamage()`. The existing invincibility window (800ms) prevents stacking.
+- **Enemy hit**: extend `Enemy.takeDamage(amount, attackerX?)` so it can apply a short horizontal impulse (`±300 vx`) away from the player before normal patrol resumes.
+- **Player hit**: extend `Player.takeDamage(amount, currentStats, time, sourceX?)` so enemy contact and projectile hits can apply `±250 vx` plus `-80 vy` away from the source.
+- The existing 800ms invincibility window still prevents repeated player knockback stacking.
 
 ### Hit Flash
-- **Enemy**: already flashes red (`setTint(0xff4444)` for 100ms). Extend to also scale-pulse (`setScale(1.15)` → `setScale(1.0)` over 80ms) for extra impact.
-- **Player**: during the 800ms invincibility window, pulse alpha between 1.0 and 0.3 every 100ms using a Phaser tween. Already has a static `setAlpha(0.5)` — replace with the pulsing tween, cancelled on iframes expiry.
+- **Enemy**: keep the existing red tint flash, and add a brief scale punch (`1.15` → `1.0` over ~80ms).
+- **Player**: replace the static `setAlpha(0.5)` invincibility treatment with a looping alpha tween (`1.0` ↔ `0.3`) that starts when damage lands and stops automatically when iframes end or are refreshed.
 
 ### Death Burst
-On enemy death, spawn 6–8 small rectangles (8×8px, enemy's colour) that fly outward radially using `scene.tweens.add` with random angle, distance 40–80px, duration 300ms, alpha fade to 0. Pure tween — no physics bodies.
-
-New file: `src/game/effects.ts`
+Add a small helper in `src/game/effects.ts`:
 
 ```ts
 export function spawnDeathBurst(scene: Phaser.Scene, x: number, y: number, color: number): void
 ```
 
-Called from `GameScene.onEnemyDied()`. The enemy's tint colour is already available via `ENEMY_CONFIGS[type].color`.
+It should spawn 6–8 simple rectangles (no physics bodies) that tween outward radially, fade to zero alpha, and self-destroy. `GameScene.onEnemyDied()` calls it using the enemy's configured tint from `ENEMY_CONFIGS`.
 
 ### Attack Box Improvement
-The existing `attackBox` rectangle gets a scale-punch tween: `scaleX/Y: 1.3` over 60ms then back to `1.0`, alongside the existing destroy timer. Implemented inside `Player.showAttackBox()`.
+Keep the current transient `attackBox` rectangle, but add a short scale-punch tween when it appears so melee attacks feel less flat.
 
 ---
 
 ## 2. Active Class Abilities
 
 ### Goal
-Each consultant class has a unique active ability on a cooldown, pressed with `Q`. Abilities change enemy state and/or emit stat changes. The HUD shows the ability name and cooldown state.
+Each consultant class gets one active ability on `Q`, with a visible cooldown in the React HUD. Abilities may affect enemies, projectiles, loot, or stats, but the orchestration stays in `GameScene`, which already owns the active groups and event emission.
 
 ### Key Binding
-`Q` key — `Phaser.Input.Keyboard.JustDown` checked in `GameScene.update()`. When fired, call `this.player.activateAbility(time, scene, enemies, projectiles)`.
+Bind `Q` in `GameScene.create()` and check `Phaser.Input.Keyboard.JustDown()` in `GameScene.update()`.
 
 ### Ability Definitions
 
@@ -60,74 +57,130 @@ Each consultant class has a unique active ability on a cooldown, pressed with `Q
 |---|---|---|---|
 | `architect` | **Draft Architecture** | All active enemies slow to 50% speed for 5s; emit `technicalDebt: -10` | 15s |
 | `developer` | **Ship Hotfix** | Deal 60 damage to all enemies within 180px of player; emit `deliveryProgress: +5` | 10s |
-| `ux` | **User Research** | Freeze all active enemies for 3s (velocity = 0, AI paused); emit `clientHappiness: +8` | 20s |
-| `datascientist` | **Run the Model** | Cycle all loot tint between `0xffff00` and `0xffffff` every 200ms for 3s (Phaser tween repeat); emit `deliveryProgress: +8, complianceRisk: +5` | 12s |
-| `pm` | **Call a Meeting** | Reverse all active enemies' patrol direction for 4s (they flee); emit `teamMorale: +8` | 18s |
-| `security` | **Deploy Firewall** | Destroy all active projectiles; make player immune to projectiles for 4s (flag on Player); emit `complianceRisk: -10` | 15s |
-| `accountmanager` | **Escalate** | Stun the nearest enemy for 5s (freeze + yellow tint); emit `clientHappiness: +5` | 12s |
-| `intern` | **Wildcard** | 70% chance: randomly pick one of the above class effects (equal weight); 30% chance: bad variant — apply random stat delta between -10 and +5 on a random stat | 8s |
+| `ux` | **User Research** | Freeze all active enemies for 3s; emit `clientHappiness: +8` | 20s |
+| `datascientist` | **Run the Model** | Pulse all active loot tints for 3s; emit `deliveryProgress: +8, complianceRisk: +5` | 12s |
+| `pm` | **Call a Meeting** | Reverse all active enemies' patrol direction for 4s; emit `teamMorale: +8` | 18s |
+| `security` | **Deploy Firewall** | Destroy all active projectiles; make the player immune to projectiles for 4s; emit `complianceRisk: -10` | 15s |
+| `accountmanager` | **Escalate** | Stun the nearest active enemy for 5s; emit `clientHappiness: +5` | 12s |
+| `intern` | **Wildcard** | 70% chance: randomly copy one non-intern class effect; 30% chance: apply a random stat delta between `-10` and `+5` on a random stat | 8s |
 
-### Implementation
+### Implementation Shape
+
+**Shared data**
+- Update `src/constants/classes.ts` so each class's existing `abilityName` copy matches the active ability names above. This keeps the class picker, end screen, and cooldown HUD consistent.
+- Add `AbilityUsedPayload` to `src/types/game.ts`:
+
+```ts
+export type AbilityUsedPayload = {
+  name: string;
+  cooldownMs: number;
+};
+```
+
+**New file: `src/game/abilities.ts`**
+- Centralize active ability behavior in a helper instead of pushing full scene-wide logic into `Player`.
+- Export a typed `useClassAbility(ctx)` function that receives the scene, current time, player, enemy group, projectile group, and loot group, and returns either `null` (cooldown/not applicable) or:
+
+```ts
+type AbilityUseResult = {
+  name: string;
+  cooldownMs: number;
+  statDelta?: Partial<RawStats>;
+};
+```
 
 **`Player.ts`**
-- Add `private abilityCooldownTimer = 0` and `private projectileImmunityUntil = 0`
-- Add `activateAbility(time: number, scene: Phaser.Scene, enemies: Group, projectiles: Group): Partial<GameStats> | null` — returns stat delta or null if on cooldown
-- Per-class logic in a `switch(this.classId)` block; each case is ≤10 lines
-- For complex abilities (slow, freeze, flee), add temporary state flags on each `Enemy` instance via `enemy.setData('slowed', true)` and check in `Enemy.preUpdate()`
-- `isProjectileImmune(time: number): boolean` — used in `GameScene` overlap handler
+- Add cooldown and projectile-immunity state only:
+  - `private abilityCooldownUntil = 0`
+  - `private projectileImmunityUntil = 0`
+- Add helper methods:
+  - `isAbilityReady(time: number): boolean`
+  - `startAbilityCooldown(time: number, cooldownMs: number): void`
+  - `grantProjectileImmunity(time: number, durationMs: number): void`
+  - `isProjectileImmune(time: number): boolean`
+- Keep movement, attack, damage, and passive kill bonuses inside `Player`; do **not** move scene-wide ability orchestration there.
 
 **`Enemy.ts`**
-- `preUpdate`: check `getData('frozen')`, `getData('slowed')`, `getData('fleeing')` flags and override velocity/patrol accordingly
-- `clearAbilityEffects()` — called via `delayedCall` when effect expires
+- Add typed temporary-effect state instead of `setData()` flags:
+  - `slowUntil`
+  - `freezeUntil`
+  - `fleeUntil`
+  - `stunUntil`
+- Add methods such as `applySlow(until)`, `applyFreeze(until)`, `applyFlee(until)`, `applyStun(until)`, and `clearExpiredEffects(time)`.
+- `preUpdate()` should derive effective movement from those fields before calling/overriding patrol behavior.
 
 **`GameScene.ts`**
-- Bind `Q` key in `create()`
-- In `update()`: on `JustDown(qKey)`, call `activateAbility()`, apply returned stat delta, emit stats
-- Projectile overlap: check `this.player.isProjectileImmune(time)` before applying damage
+- Bind `Q` in `create()`.
+- In `update()`, when `Q` is pressed, call `useClassAbility(...)`.
+- If an ability succeeds:
+  1. apply `statDelta` with `applyStatChanges`
+  2. emit `STATS_CHANGED`
+  3. emit `ABILITY_USED`
+- In the projectile overlap handler, check `this.player.isProjectileImmune(time)` before applying damage.
 
-**`PhaserGame.tsx` HUD**
-- On `ABILITY_USED` event, store `{ name: string; activatedAt: number; cooldownMs: number }` in React state
-- A `useEffect` with a 100ms `setInterval` derives `cooldownPct = Math.min(1, (Date.now() - activatedAt) / cooldownMs)` and updates state; interval clears when `cooldownPct >= 1`
-- Render a small ability row below the stat bars: ability name + a thin cooldown progress bar (grey fill → purple fill as cooldown completes)
+**`PhaserGame.tsx`**
+- Listen for `ABILITY_USED`.
+- Store `{ name, activatedAt, cooldownMs }` in React state.
+- Render a small HUD row below the stat bars: ability name plus a thin progress bar that fills as cooldown elapses.
 
-**New event key:** `ABILITY_USED` — payload `{ name: string; cooldownMs: number }` — added to `eventKeys.ts`
+**New event key**
+- Add `ABILITY_USED` to `src/game/eventKeys.ts`.
 
 ---
 
 ## 3. Two New Levels
 
 ### Goal
-Add Level 2 and Level 3 between the current Level 1 and the Boss Level, with increasing difficulty and a new loot type.
+Insert Level 2 and Level 3 between the existing Level 1 and Boss Level, reusing the current `LevelData` pattern and scene restart flow.
 
 ### New Loot Type: `compliance`
 - Stat effect: `complianceRisk: -15`
-- Texture key: `loot-compliance` — generated in `BootScene` alongside existing loot textures
-- Added to `LOOT_STATS` in `GameScene`: `compliance: { complianceRisk: -15 }`
+- Asset path: `public/assets/sprites/loot-compliance.png`
+- Preload key: `loot-compliance` in `BootScene.preload()`
+- Add to `LOOT_STATS` in `GameScene`:
+
+```ts
+compliance: { complianceRisk: -15 }
+```
 
 ### Level 2 — "The Open Plan Office"
-- **Width:** 4000px · **Theme:** bureaucracy, distractions
-- **Difficulty:** moderate-hard — more spectres and wraiths (annoying, ranged/fast), first grouped spawns (2 enemies close together)
-- **Platforms:** higher density, more vertical layering to reward skilled jumpers
-- **Loots:** 5 pickups including first `compliance` loot
-- **Transition:** reaches `exitX` → starts Level 3
+- **Width:** 4000px
+- **Theme:** bureaucracy, distractions, ranged pressure
+- **Difficulty:** moderate-hard — more wraiths/spectres, first grouped spawns
+- **Platforms:** denser vertical layering than Level 1
+- **Loot:** 5 pickups including the first `compliance` loot
+- **Transition:** reaching `exitX` starts Level 3
 
 ### Level 3 — "The Architecture Review"
-- **Width:** 3600px · **Theme:** technical death march
-- **Difficulty:** hard — troll-heavy, multiple spectres at elevation, tighter gaps
-- **Platforms:** longer jumps, loot placed on harder-to-reach elevated platforms
-- **Loots:** 5 pickups, mix of all 4 types
-- **Transition:** reaches `exitX` → starts Boss Level
+- **Width:** 3600px
+- **Theme:** technical death march
+- **Difficulty:** hard — troll-heavy, multiple elevated spectres, tighter spacing
+- **Platforms:** longer jumps and more punished misses
+- **Loot:** 5 pickups mixing all 4 loot types
+- **Transition:** reaching `exitX` starts Boss Level
 
 ### Level Progression Chain
 `Level 1 → Level 2 → Level 3 → Boss Level`
 
-`GameScene` stores the current level index in `game.registry` as `'levelIndex'` (0-based: 0=Level1, 1=Level2, 2=Level3, 3=BossLevel). The `isBossLevel` flag becomes `levelIndex === 3`. `onLevelComplete()` reads the current index, increments it, sets it in registry, then calls `this.scene.start('GameScene', { levelIndex })`. The `init(data)` method reads `levelIndex` from data.
+To fit the current scene setup:
+- Seed `game.registry.set('levelIndex', 0)` in `createGameConfig()`.
+- Change `GameScene.init()` to read `levelIndex` from scene data first, then registry.
+- Build `currentLevel` from a local array: `[level1, level2, level3, bossLevel]`.
+- Derive `isBossLevel` from the final array index instead of a boolean `bossLevel` flag.
+- Update `setupHUD()` so the label reflects `LEVEL 1`, `LEVEL 2`, `LEVEL 3`, or `⚠ BOSS LEVEL`.
+- Update `onLevelComplete()` so it increments `levelIndex`, writes it back to the registry, and restarts `GameScene` with `{ levelIndex: nextIndex }`.
 
-**New files:**
+### Type Change Required
+The current `LootData` type only allows `'budget' | 'morale' | 'debt'`, so `src/game/levels/types.ts` must change. Extract a shared union and extend it:
+
+```ts
+export type LootType = 'budget' | 'morale' | 'debt' | 'compliance';
+export type LootData = { type: LootType; x: number; y: number };
+```
+
+**New files**
 - `src/game/levels/level2.ts`
 - `src/game/levels/level3.ts`
-
-No changes to `LevelData` type or `types.ts`.
 
 ---
 
@@ -135,21 +188,28 @@ No changes to `LevelData` type or `types.ts`.
 
 | File | Change Type |
 |---|---|
+| `docs/superpowers/plans/2026-06-13-gameplay-improvements.md` | **New** — implementation-ready plan |
+| `public/assets/sprites/loot-compliance.png` | **New** — temporary compliance loot sprite |
+| `src/constants/classes.ts` | Rename displayed ability names to match active abilities |
+| `src/game/abilities.ts` | **New** — typed active-ability executor |
+| `src/game/config.ts` | Seed `levelIndex` in registry |
 | `src/game/effects.ts` | **New** — `spawnDeathBurst` helper |
-| `src/game/scenes/BootScene.ts` | Add `loot-compliance` texture generation |
-| `src/game/scenes/GameScene.ts` | Screen shake, Q binding, ability dispatch, level index chain, compliance loot |
-| `src/game/entities/Player.ts` | Knockback on damage, ability method, projectile immunity flag, attack box punch |
-| `src/game/entities/Enemy.ts` | Knockback impulse, ability effect flags (`frozen`, `slowed`, `fleeing`), `clearAbilityEffects` |
+| `src/game/entities/Enemy.ts` | Knockback + typed temporary status effects |
+| `src/game/entities/Player.ts` | Knockback on damage, invincibility tween, ability cooldown helpers, projectile immunity |
 | `src/game/eventKeys.ts` | Add `ABILITY_USED` constant |
-| `src/game/PhaserGame.tsx` | Ability HUD row (name + cooldown bar) |
 | `src/game/levels/level2.ts` | **New** — Level 2 layout |
 | `src/game/levels/level3.ts` | **New** — Level 3 layout |
+| `src/game/levels/types.ts` | Add `LootType` and extend `LootData` |
+| `src/game/PhaserGame.tsx` | Ability cooldown HUD row |
+| `src/game/scenes/BootScene.ts` | Preload `loot-compliance` sprite |
+| `src/game/scenes/GameScene.ts` | Combat feedback, ability dispatch, projectile immunity, multi-level progression, compliance loot |
+| `src/types/game.ts` | Add `AbilityUsedPayload` |
 
 ---
 
 ## Out of Scope
-- Audio (deferred)
-- Visual sprite/art replacement (external contributor)
+- Audio
+- Sprite/art replacement beyond the temporary compliance loot icon
 - High score / replayability loop
 - Between-level shop
 - New enemy types

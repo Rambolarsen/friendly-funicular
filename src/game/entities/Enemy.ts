@@ -28,6 +28,11 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
   protected speed: number;
   protected animKey: string = '';
   private baseTint: number | null = null;
+  protected slowUntil = 0;
+  protected freezeUntil = 0;
+  protected fleeUntil = 0;
+  protected stunUntil = 0;
+  protected knockbackUntil = 0;
 
   private hpBar: Phaser.GameObjects.Rectangle;
   private hpBarBg: Phaser.GameObjects.Rectangle;
@@ -62,11 +67,22 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
   }
 
   patrol() {
+    const time = this.scene.time.now;
     const body = this.body as Phaser.Physics.Arcade.Body;
+    const movement = this.getMovementState(time);
+
+    if (movement.underKnockback) {
+      return;
+    }
+    if (movement.immobilized) {
+      body.setVelocityX(0);
+      return;
+    }
+
     if (this.x > this.patrolCenter + this.patrolRange) this.direction = -1;
     if (this.x < this.patrolCenter - this.patrolRange) this.direction = 1;
-    body.setVelocityX(this.direction * this.speed);
-    this.setFlipX(this.direction === -1);
+    body.setVelocityX(movement.direction * this.speed * movement.speedMultiplier);
+    this.setFlipX(movement.direction === -1);
   }
 
   updateHpBar() {
@@ -77,11 +93,27 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     this.hpBar.setFillStyle(pct > 0.5 ? 0x22c55e : pct > 0.25 ? 0xf59e0b : 0xef4444);
   }
 
-  takeDamage(amount: number): boolean {
+  takeDamage(amount: number, attackerX?: number): boolean {
     this.hp = Math.max(0, this.hp - amount);
     this.updateHpBar();
+    const body = this.body as Phaser.Physics.Arcade.Body;
+    if (typeof attackerX === 'number') {
+      const direction = this.x >= attackerX ? 1 : -1;
+      this.knockbackUntil = this.scene.time.now + 120;
+      body.setVelocityX(direction * 300);
+      this.setFlipX(direction === -1);
+    }
     this.setTint(0xff4444);
+    this.setScale(1.15);
+    this.scene.tweens.add({
+      targets: this,
+      scaleX: 1,
+      scaleY: 1,
+      duration: 80,
+      ease: 'Quad.easeOut',
+    });
     this.scene.time.delayedCall(100, () => {
+      if (!this.active) return;
       if (this.baseTint) this.setTint(this.baseTint);
       else this.clearTint();
     });
@@ -94,10 +126,50 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     this.destroy();
   }
 
+  applySlow(until: number): void {
+    this.slowUntil = Math.max(this.slowUntil, until);
+  }
+
+  applyFreeze(until: number): void {
+    this.freezeUntil = Math.max(this.freezeUntil, until);
+  }
+
+  applyFlee(until: number): void {
+    this.fleeUntil = Math.max(this.fleeUntil, until);
+  }
+
+  applyStun(until: number): void {
+    this.stunUntil = Math.max(this.stunUntil, until);
+  }
+
+  clearExpiredEffects(time: number): void {
+    if (time >= this.slowUntil) this.slowUntil = 0;
+    if (time >= this.freezeUntil) this.freezeUntil = 0;
+    if (time >= this.fleeUntil) this.fleeUntil = 0;
+    if (time >= this.stunUntil) this.stunUntil = 0;
+    if (time >= this.knockbackUntil) this.knockbackUntil = 0;
+  }
+
   preUpdate(time: number, delta: number) {
     super.preUpdate(time, delta);
+    this.clearExpiredEffects(time);
     this.patrol();
     this.updateHpBar();
+  }
+
+  protected getMovementState(time: number): {
+    direction: 1 | -1;
+    speedMultiplier: number;
+    immobilized: boolean;
+    underKnockback: boolean;
+  } {
+    const inverted = time < this.fleeUntil;
+    return {
+      direction: (inverted ? -this.direction : this.direction) as 1 | -1,
+      speedMultiplier: time < this.slowUntil ? 0.5 : 1,
+      immobilized: time < this.freezeUntil || time < this.stunUntil,
+      underKnockback: time < this.knockbackUntil,
+    };
   }
 }
 

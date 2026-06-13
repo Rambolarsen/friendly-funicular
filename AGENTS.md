@@ -47,9 +47,13 @@ src/
       Player.ts         # Arcade physics sprite, keyboard input, attack hitbox, class kill modifiers
       Enemy.ts          # Patrol AI sprite; SpectreEnemy subclass fires projectiles
       Boss.ts           # Boss enemy — charge attacks, higher HP
+    abilities.ts       # Active class ability executor used by GameScene on Q
+    effects.ts         # Lightweight combat VFX helpers such as enemy death bursts
     levels/
       types.ts          # LevelData, PlatformData, EnemySpawnData, LootData, EnemyType
       level1.ts         # Level 1 platform + enemy layout
+      level2.ts         # Level 2: Open Plan Office
+      level3.ts         # Level 3: Architecture Review
       bossLevel.ts      # Boss room layout
 ```
 
@@ -68,13 +72,14 @@ Phaser runs inside the `<PhaserGame>` React component during the `playing` phase
 - Lose conditions: `budget <= 0`, `teamMorale <= 0`, `technicalDebt >= 100`, `complianceRisk >= 100`.
 
 ### Game progression
-- Two levels: Level 1 → Boss Level.
-- Level 1 ends when the player reaches `exitX`; emits `deliveryProgress +10` then starts Boss Level.
+- Four levels: `Level 1 → Level 2 → Level 3 → Boss Level`.
+- Any non-boss level ends when the player reaches `exitX`; emits `deliveryProgress +10`, increments `levelIndex`, and restarts `GameScene` on the next level.
 - Boss Level ends when the Boss enemy is defeated.
 - `GamePhase` cycles: `start` → `playing` → `end`.
 
 ### Phaser ↔ React bridge
 - `GameScene` emits `STATS_CHANGED` (payload: `RawStats`) and `GAME_OVER` (payload: `GameOverPayload`) on `game.events`.
+- `GameScene` also emits `ABILITY_USED` (payload: `AbilityUsedPayload`) when an active class ability fires.
 - `PhaserGame.tsx` listens for these events and updates React state / calls `onGameOver`.
 - Stats are also written to `game.registry` so scene restarts can read the latest values.
 
@@ -92,6 +97,7 @@ Real pixel art sprites from the [Kenney Pixel Platformer](https://kenney.nl/asse
 - `chars.png` — 9×3 character spritesheet (24×24 px frames, 1px gap); used for player, all enemies, and boss
 - `platform.png` — 18×18 grass-top tile; tiled across platforms via `add.tileSprite`
 - `loot-budget.png`, `loot-morale.png`, `loot-debt.png` — loot item tiles (18×18)
+- `loot-compliance.png` — temporary compliance loot tile (18×18)
 
 `BootScene.preload()` loads all sprites; `BootScene.create()` defines 8 named animations (`player-walk`, `player-idle`, `player-jump`, `goblin-walk`, `wraith-walk`, `troll-walk`, `spectre-idle`, `boss-walk`). Player and enemies play these animations in their `update()`/`preUpdate()` loops.
 

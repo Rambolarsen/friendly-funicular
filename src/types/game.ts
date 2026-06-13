@@ -27,3 +27,26 @@ export type GameOverPayload = {
   reason: string | null;
   multiplayerResult?: MultiplayerGameOverPayload;
 };
+
+export type AbilityTelegraphKind =
+  | 'radius'
+  | 'nearest-enemy'
+  | 'all-enemies'
+  | 'all-loot'
+  | 'all-projectiles'
+  | 'wildcard';
+
+export type AbilityDefinition = {
+  id: string;
+  name: string;
+  cooldownMs: number;
+  description: string;
+  rangeLabel: string;
+  telegraphKind: AbilityTelegraphKind;
+  radiusPx?: number;
+};
+
+export type AbilityUsedPayload = {
+  name: string;
+  cooldownMs: number;
+};

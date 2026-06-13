@@ -27,6 +27,7 @@ export function createGameConfig(
       preBoot: (game: Phaser.Game) => {
         game.registry.set('selectedClass', selectedClass);
         game.registry.set('stats', { ...INITIAL_STATS });
+        game.registry.set('levelIndex', 0);
       },
     },
   };

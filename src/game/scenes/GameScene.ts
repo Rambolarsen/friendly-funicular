@@ -3,19 +3,29 @@ import { RawStats } from '../../types/game';
 import { GameStats as GameStatsVO } from '../../domain/valueObjects/GameStats';
 import { applyStatChanges } from '../../domain/rules/statRules';
 import { checkWinLose } from '../../domain/rules/progressionRules';
-import { GAME_OVER, STATS_CHANGED } from '../eventKeys';
+import { ABILITY_USED, GAME_OVER, LEVEL_STARTED, STATS_CHANGED } from '../eventKeys';
+import {
+  getAbilityDefinition,
+  isAbilityTelegraphVisible,
+  useClassAbility as executeClassAbility,
+} from '../abilities';
 import { Player } from '../entities/Player';
-import { Enemy, SpectreEnemy } from '../entities/Enemy';
+import { ENEMY_CONFIGS, Enemy, SpectreEnemy } from '../entities/Enemy';
 import { Boss } from '../entities/Boss';
-import { EnemyType, LevelData } from '../levels/types';
+import { spawnDeathBurst } from '../effects';
+import { EnemyType, LevelData, LootType } from '../levels/types';
 import { level1 } from '../levels/level1';
+import { level2 } from '../levels/level2';
+import { level3 } from '../levels/level3';
 import { bossLevel } from '../levels/bossLevel';
 
 const PLAYER_ATTACK_DAMAGE = 25;
-const LOOT_STATS: Record<string, Partial<RawStats>> = {
+const LEVELS: LevelData[] = [level1, level2, level3, bossLevel];
+const LOOT_STATS: Record<LootType, Partial<RawStats>> = {
   budget: { budget: 15 },
   morale: { teamMorale: 12 },
   debt:   { technicalDebt: -15 },
+  compliance: { complianceRisk: -15 },
 };
 
 export class GameScene extends Phaser.Scene {
@@ -28,30 +38,41 @@ export class GameScene extends Phaser.Scene {
 
   private stats!: RawStats;
   private classId!: string;
+  private levelIndex = 0;
   private isBossLevel = false;
   private bossDefeated = false;
   private levelComplete = false;
 
   private currentLevel!: LevelData;
+  private abilityKey!: Phaser.Input.Keyboard.Key;
 
   // UI
   private hpText!: Phaser.GameObjects.Text;
+  private abilityTelegraphGraphics: Phaser.GameObjects.Graphics | null = null;
+  private abilityAura: Phaser.GameObjects.Rectangle | null = null;
+  private lastAbilityUsedAt: number | null = null;
+  private projectileTelegraphSnapshot: Array<{ x: number; y: number }> = [];
 
   constructor() {
     super({ key: 'GameScene' });
   }
 
-  init(data?: { bossLevel?: boolean }) {
-    this.isBossLevel = data?.bossLevel ?? false;
+  init(data?: { levelIndex?: number }) {
+    const storedLevelIndex = this.registry.get('levelIndex');
+    this.levelIndex = data?.levelIndex
+      ?? (typeof storedLevelIndex === 'number' ? storedLevelIndex : 0);
+    this.isBossLevel = this.levelIndex === LEVELS.length - 1;
     this.bossDefeated = false;
     this.levelComplete = false;
+    this.lastAbilityUsedAt = null;
+    this.projectileTelegraphSnapshot = [];
   }
 
   create() {
     this.stats = GameStatsVO.from(this.registry.get('stats') as RawStats).toPlain();
     this.classId = this.registry.get('selectedClass')?.id ?? 'developer';
 
-    this.currentLevel = this.isBossLevel ? bossLevel : level1;
+    this.currentLevel = LEVELS[this.levelIndex] ?? LEVELS[0];
 
     // World bounds
     this.physics.world.setBounds(0, 0, this.currentLevel.width, this.currentLevel.height);
@@ -66,6 +87,7 @@ export class GameScene extends Phaser.Scene {
     const { x, y } = this.currentLevel.playerStart;
     this.player = new Player(this, x, y, this.classId);
     this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
+    this.abilityKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.Q);
 
     // Exit marker (non-boss levels)
     if (!this.isBossLevel) {
@@ -79,6 +101,8 @@ export class GameScene extends Phaser.Scene {
 
     this.setupColliders();
     this.setupHUD();
+    this.setupAbilityTelegraph();
+    this.game.events.emit(LEVEL_STARTED);
     this.emitStats(); // initial HUD sync
   }
 
@@ -86,6 +110,7 @@ export class GameScene extends Phaser.Scene {
     if (this.levelComplete) return;
 
     this.player.update(time);
+    this.updateAbilityTelegraph();
 
     // Fall-off detection: respawn with stat penalty
     if (this.player.y > this.currentLevel.height + 50) {
@@ -103,14 +128,9 @@ export class GameScene extends Phaser.Scene {
     for (const obj of this.enemies.getChildren()) {
       const enemy = obj as Enemy;
       if (!enemy.active) continue;
-      const bounds = new Phaser.Geom.Rectangle(
-        enemy.x - enemy.displayWidth / 2,
-        enemy.y - enemy.displayHeight / 2,
-        enemy.displayWidth,
-        enemy.displayHeight,
-      );
-      if (this.player.isAttackHitting(bounds)) {
-        const died = enemy.takeDamage(PLAYER_ATTACK_DAMAGE);
+      if (this.player.isAttackHitting(enemy)) {
+        this.cameras.main.shake(80, 0.003);
+        const died = enemy.takeDamage(PLAYER_ATTACK_DAMAGE, this.player.x);
         if (died) this.onEnemyDied(enemy as Enemy);
       }
     }
@@ -119,6 +139,37 @@ export class GameScene extends Phaser.Scene {
     for (const obj of this.enemies.getChildren()) {
       if (obj instanceof SpectreEnemy && obj.active) {
         obj.shoot(this.player.x, this.player.y, time);
+      }
+    }
+
+    if (Phaser.Input.Keyboard.JustDown(this.abilityKey)) {
+      const projectileSnapshot = this.classId === 'security'
+        ? this.projectiles.getChildren().filter(isPositionedActiveObject).map(({ x, y }) => ({ x, y }))
+        : [];
+      const result = executeClassAbility({
+        scene: this,
+        time,
+        player: this.player,
+        enemies: this.enemies,
+        projectiles: this.projectiles,
+        loots: this.loots,
+        onEnemyDefeated: (enemy) => {
+          this.onEnemyDied(enemy as Enemy);
+        },
+      });
+
+      if (result) {
+        if (result.statDelta) {
+          this.stats = applyStatChanges(this.stats, result.statDelta);
+          this.emitStats();
+        }
+        this.lastAbilityUsedAt = time;
+        this.projectileTelegraphSnapshot = projectileSnapshot;
+        this.game.events.emit(ABILITY_USED, {
+          name: result.name,
+          cooldownMs: result.cooldownMs,
+        });
+        this.checkWinLose();
       }
     }
 
@@ -189,8 +240,15 @@ export class GameScene extends Phaser.Scene {
       const enemy = obj as Enemy;
       if (!enemy.active) return;
       const time = this.time.now;
-      const { newStats, died } = this.player.takeDamage(enemy.contactDamage, this.stats, time);
+      const { newStats, died, didTakeDamage } = this.player.takeDamage(
+        enemy.contactDamage,
+        this.stats,
+        time,
+        enemy.x,
+      );
+      if (!didTakeDamage) return;
       this.stats = newStats;
+      this.cameras.main.shake(250, 0.008);
       this.emitStats();
       this.updateHUD();
       if (died) this.onPlayerDied();
@@ -199,18 +257,25 @@ export class GameScene extends Phaser.Scene {
     // Projectile hits player
     this.physics.add.overlap(this.player, this.projectiles, (_p, proj) => {
       const time = this.time.now;
-      const { newStats, died } = this.player.takeDamage(8, this.stats, time);
+      const projectile = proj as Phaser.GameObjects.GameObject & { x?: number };
+      if (this.player.isProjectileImmune(time)) {
+        projectile.destroy();
+        return;
+      }
+      const { newStats, died, didTakeDamage } = this.player.takeDamage(8, this.stats, time, projectile.x);
+      projectile.destroy();
+      if (!didTakeDamage) return;
       this.stats = newStats;
+      this.cameras.main.shake(250, 0.008);
       this.emitStats();
       this.updateHUD();
-      (proj as Phaser.GameObjects.GameObject).destroy();
       if (died) this.onPlayerDied();
     });
 
     // Player collects loot
     this.physics.add.overlap(this.player, this.loots, (_p, loot) => {
-      const type = (loot as Phaser.GameObjects.Image).getData('lootType') as string;
-      const changes = LOOT_STATS[type] ?? {};
+      const type = (loot as Phaser.GameObjects.Image).getData('lootType') as LootType;
+      const changes = LOOT_STATS[type];
       this.stats = applyStatChanges(this.stats, changes);
       this.emitStats();
       (loot as Phaser.GameObjects.GameObject).destroy();
@@ -220,7 +285,7 @@ export class GameScene extends Phaser.Scene {
   private setupHUD() {
     // Minimal in-scene text labels (main HUD is React overlay)
     this.add.text(12, 10,
-      this.isBossLevel ? '⚠ BOSS LEVEL' : 'LEVEL 1',
+      this.isBossLevel ? '⚠ BOSS LEVEL' : `LEVEL ${this.levelIndex + 1}`,
       { fontSize: '13px', color: '#e5e7eb', backgroundColor: '#00000066', padding: { x: 6, y: 3 } },
     ).setScrollFactor(0).setDepth(100);
 
@@ -228,6 +293,105 @@ export class GameScene extends Phaser.Scene {
       `HP: ${this.player?.hp ?? 100}`,
       { fontSize: '12px', color: '#f87171', backgroundColor: '#00000066', padding: { x: 6, y: 3 } },
     ).setScrollFactor(0).setDepth(100);
+  }
+
+  private setupAbilityTelegraph() {
+    this.abilityTelegraphGraphics = this.add.graphics().setDepth(12);
+    this.abilityAura = this.add.rectangle(0, 0, 0, 0, 0x22d3ee, 0.04)
+      .setScrollFactor(0)
+      .setDepth(90)
+      .setVisible(false);
+
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.abilityTelegraphGraphics?.destroy();
+      this.abilityAura?.destroy();
+      this.abilityTelegraphGraphics = null;
+      this.abilityAura = null;
+    });
+  }
+
+  private updateAbilityTelegraph() {
+    const telegraph = this.abilityTelegraphGraphics;
+    const aura = this.abilityAura;
+    if (!telegraph || !aura) {
+      return;
+    }
+
+    const definition = getAbilityDefinition(this.classId);
+    const enemies = this.enemies.getChildren().filter((child): child is Enemy => child instanceof Enemy && child.active);
+    const loots = this.loots.getChildren().filter(isPositionedActiveObject);
+
+    telegraph.clear();
+    aura.setVisible(false);
+
+    if (!isAbilityTelegraphVisible(this.lastAbilityUsedAt, this.time.now)) {
+      return;
+    }
+
+    switch (definition.telegraphKind) {
+      case 'radius':
+        telegraph.lineStyle(2, 0x67e8f9, 0.3);
+        telegraph.strokeCircle(this.player.x, this.player.y, definition.radiusPx ?? 0);
+        break;
+
+      case 'nearest-enemy': {
+        const nearestEnemy = findNearestTarget(this.player.x, this.player.y, enemies);
+        if (!nearestEnemy) {
+          break;
+        }
+
+        telegraph.lineStyle(2, 0xfbbf24, 0.4);
+        telegraph.beginPath();
+        telegraph.moveTo(this.player.x, this.player.y - 8);
+        telegraph.lineTo(nearestEnemy.x, nearestEnemy.y);
+        telegraph.strokePath();
+        telegraph.strokeCircle(nearestEnemy.x, nearestEnemy.y, 18);
+        break;
+      }
+
+      case 'all-enemies':
+        this.showAbilityAura(getEnemyAuraColor(this.classId), 0.025);
+        telegraph.lineStyle(2, getEnemyAuraColor(this.classId), 0.25);
+        for (const enemy of enemies) {
+          telegraph.strokeCircle(enemy.x, enemy.y, 20);
+        }
+        break;
+
+      case 'all-loot':
+        this.showAbilityAura(0x93c5fd, 0.025);
+        telegraph.lineStyle(2, 0x93c5fd, 0.3);
+        for (const loot of loots) {
+          telegraph.strokeCircle(loot.x, loot.y, 14);
+        }
+        break;
+
+      case 'all-projectiles':
+        this.showAbilityAura(0x60a5fa, this.projectileTelegraphSnapshot.length > 0 ? 0.03 : 0.02);
+        telegraph.lineStyle(2, 0x60a5fa, 0.3);
+        telegraph.strokeCircle(this.player.x, this.player.y, 42);
+        for (const projectile of this.projectileTelegraphSnapshot) {
+          telegraph.strokeCircle(projectile.x, projectile.y, 10);
+        }
+        break;
+
+      case 'wildcard':
+        this.showAbilityAura(0xa855f7, 0.025);
+        telegraph.lineStyle(2, 0xa855f7, 0.3);
+        telegraph.strokeCircle(this.player.x, this.player.y, 56);
+        break;
+    }
+  }
+
+  private showAbilityAura(color: number, alpha: number) {
+    if (!this.abilityAura) {
+      return;
+    }
+
+    this.abilityAura
+      .setPosition(this.scale.width / 2, this.scale.height / 2)
+      .setSize(this.scale.width - 24, this.scale.height - 24)
+      .setFillStyle(color, alpha)
+      .setVisible(true);
   }
 
   private updateHUD() {
@@ -240,10 +404,14 @@ export class GameScene extends Phaser.Scene {
   }
 
   private onEnemyDied(enemy: Enemy) {
+    if (!enemy.active) return;
     const isBoss = enemy instanceof Boss;
     const kills = this.player.getKillBonus(enemy.enemyType, this.classId);
     const bossBonus = isBoss ? (enemy as Boss).statDrop : {};
     const combined = mergePartials(kills, bossBonus);
+    const deathColor = isBoss
+      ? 0xef4444
+      : (ENEMY_CONFIGS[enemy.enemyType].tint ?? 0xffffff);
 
     this.stats = applyStatChanges(this.stats, combined);
     this.emitStats();
@@ -253,6 +421,8 @@ export class GameScene extends Phaser.Scene {
       this.boss = null;
     }
 
+    this.cameras.main.shake(150, 0.005);
+    spawnDeathBurst(this, enemy.x, enemy.y, deathColor);
     enemy.die();
     this.enemies.remove(enemy, false, false);
     this.checkWinLose();
@@ -275,10 +445,11 @@ export class GameScene extends Phaser.Scene {
 
     this.stats = applyStatChanges(this.stats, { deliveryProgress: 10 });
     this.emitStats();
-    this.registry.set('stats', this.stats);
+    const nextLevelIndex = Math.min(this.levelIndex + 1, LEVELS.length - 1);
+    this.registry.set('levelIndex', nextLevelIndex);
 
     this.time.delayedCall(400, () => {
-      this.scene.start('GameScene', { bossLevel: true });
+      this.scene.start('GameScene', { levelIndex: nextLevelIndex });
     });
   }
 
@@ -297,4 +468,48 @@ function mergePartials(a: Partial<RawStats>, b: Partial<RawStats>): Partial<RawS
     result[k] = ((result[k] ?? 0) + (b[k] ?? 0)) as number;
   }
   return result;
+}
+
+function findNearestTarget<T extends { x: number; y: number }>(
+  sourceX: number,
+  sourceY: number,
+  targets: T[],
+): T | null {
+  let nearestTarget: T | null = null;
+  let nearestDistance = Number.POSITIVE_INFINITY;
+
+  for (const target of targets) {
+    const distance = Phaser.Math.Distance.Between(sourceX, sourceY, target.x, target.y);
+    if (distance >= nearestDistance) {
+      continue;
+    }
+
+    nearestTarget = target;
+    nearestDistance = distance;
+  }
+
+  return nearestTarget;
+}
+
+function getEnemyAuraColor(classId: string): number {
+  switch (classId) {
+    case 'ux':
+      return 0xbfdbfe;
+    case 'pm':
+      return 0xfbbf24;
+    default:
+      return 0x22d3ee;
+  }
+}
+
+function isPositionedActiveObject(
+  child: unknown,
+): child is Phaser.GameObjects.GameObject & { active: boolean; x: number; y: number } {
+  return typeof child === 'object'
+    && child !== null
+    && 'active' in child
+    && 'x' in child
+    && 'y' in child
+    && 'destroy' in child
+    && Boolean(child.active);
 }
