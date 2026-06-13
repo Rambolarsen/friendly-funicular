@@ -29,9 +29,13 @@ src/
   App.tsx               # Root: routes between start / playing / end phases
   screens/              # StartScreen (class selection), EndScreen (win/lose)
   components/           # Pure UI: ClassCard, StatBar
-  engine/gameEngine.ts  # Pure functions: applyStatChanges, checkWinLose, clampStat
   constants/            # classes.ts, initialState.ts
   types/game.ts         # All shared types (RawStats, ConsultantClass, GamePhase, GameOverPayload)
+  domain/               # Phaser-free domain layer (DDD)
+    valueObjects/       # GameStats (VO class), Health
+    entities/           # Player, Enemy, Boss (pure TS, no Phaser)
+    events/             # DomainEvent, StatChanged, EnemyDefeated, BossDefeated, GameOver
+    rules/              # statRules, progressionRules
   game/
     config.ts           # Phaser.Game config factory — registers BootScene + GameScene
     PhaserGame.tsx      # React component: mounts/destroys Phaser instance, HUD overlay
@@ -49,13 +53,17 @@ src/
       bossLevel.ts      # Boss room layout
 ```
 
+`src/game/` contains Phaser-specific scene and entity logic that depends on the physics engine. `src/domain/` is a pure TypeScript layer with no Phaser imports—it encapsulates game rules and domain concepts for easier testing and reusability.
+
 Phaser runs inside the `<PhaserGame>` React component during the `playing` phase. The React HUD overlay (StatBar components) sits absolutely positioned over the canvas and is updated via `game.events.on(STATS_CHANGED, ...)`.
 
 ## Key Conventions
 
 ### Stat system
-- All 6 stats (`budget`, `clientHappiness`, `technicalDebt`, `teamMorale`, `deliveryProgress`, `complianceRisk`) are integers 0–100 (defined in `RawStats`).
-- `applyStatChanges` clamps each incoming delta to ±20, then clamps the result to [0, 100].
+- All 6 stats (`budget`, `clientHappiness`, `technicalDebt`, `teamMorale`, `deliveryProgress`, `complianceRisk`) are integers 0–100.
+- `RawStats` (plain 6-field object type) is in `src/types/game.ts`.
+- `GameStats` is an immutable value object class in `src/domain/valueObjects/GameStats.ts`.
+- Stat clamping and application logic is in `src/domain/rules/statRules.ts`.
 - Win condition: boss defeated AND `deliveryProgress >= 70`.
 - Lose conditions: `budget <= 0`, `teamMorale <= 0`, `technicalDebt >= 100`, `complianceRisk >= 100`.
 
@@ -74,7 +82,7 @@ Phaser runs inside the `<PhaserGame>` React component during the `playing` phase
 Each enemy type drops fixed stat changes when defeated. The player's consultant class adds a passive kill bonus on top (defined in `Player.ts` as `CLASS_KILL_BONUSES`). The `intern` class uses a random stat/value each kill.
 
 ### Types live in `src/types/game.ts`
-All shared types (`RawStats`, `ConsultantClass`, `GamePhase`, `GameOverPayload`) are defined there. `GameStats` is a deprecated alias for `RawStats` — prefer `RawStats` in new code. Level-specific types live in `src/game/levels/types.ts`.
+Plain data types (`RawStats`, `ConsultantClass`, `GamePhase`, `GameOverPayload`) are in `src/types/game.ts`. Domain value objects and entities are in `src/domain/` (e.g., `GameStats` VO in `src/domain/valueObjects/GameStats.ts`). Level-specific types live in `src/game/levels/types.ts`.
 
 ### Class IDs
 The canonical class IDs used in `CLASS_KILL_BONUSES` (passive kill stat bonuses): `architect`, `developer`, `ux`, `datascientist`, `pm`, `security`, `accountmanager`, `intern`. The `intern` class uses fully random stat changes.
