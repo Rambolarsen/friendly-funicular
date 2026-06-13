@@ -1,4 +1,4 @@
-export type GameStats = {
+export type RawStats = {
   budget: number;
   clientHappiness: number;
   technicalDebt: number;
@@ -6,6 +6,9 @@ export type GameStats = {
   deliveryProgress: number;
   complianceRisk: number;
 };
+
+/** @deprecated Use RawStats */
+export type GameStats = RawStats;
 
 export type ConsultantClass = {
   id: string;
@@ -20,6 +23,6 @@ export type GamePhase = 'start' | 'playing' | 'end';
 
 export type GameOverPayload = {
   outcome: 'win' | 'lose';
-  stats: GameStats;
+  stats: RawStats;
   reason: string | null;
 };
