@@ -102,6 +102,13 @@ export class GameScene extends Phaser.Scene {
   create() {
     this.stats = GameStatsVO.from(this.registry.get('stats') as RawStats).toPlain();
     this.classId = this.registry.get('selectedClass')?.id ?? 'developer';
+    const multiSocket = this.registry.get('multiplayerSocket') as SocketClient | undefined;
+    const multiRoomId = this.registry.get('multiplayerRoomId') as string | undefined;
+    if (multiSocket && multiRoomId) {
+      this.isMultiplayer = true;
+      this.socketClient = multiSocket;
+      this.roomId = multiRoomId;
+    }
 
     this.currentLevel = this.isMultiplayer ? hordeArena : (LEVELS[this.levelIndex] ?? LEVELS[0]);
 
