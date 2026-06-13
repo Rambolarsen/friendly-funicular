@@ -6,6 +6,8 @@ A browser-based side-scrolling platformer where the player is an IT consultant n
 
 Always invoke the `using-superpowers` skill at the start of any development work. This ensures the correct workflow skills (brainstorming, TDD, debugging, etc.) are applied before taking action.
 
+Project-specific skills live in `skills/`. Each skill has its own subdirectory with a `SKILL.md` file. Load relevant skills before starting work in their domain.
+
 ## Issue Board
 
 https://github.com/Rambolarsen/friendly-funicular/issues
