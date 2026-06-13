@@ -3,7 +3,7 @@ import { RawStats } from '../../types/game';
 import { applyStatChanges } from '../../domain/rules/statRules';
 import { checkWinLose } from '../../domain/rules/progressionRules';
 import { EnemyType } from '../levels/types';
-import { CLASS_MODIFIERS } from '../../constants/classes';
+import { CLASS_MODIFIERS, CONSULTANT_CLASSES } from '../../constants/classes';
 
 const MOVE_SPEED = 200;
 const JUMP_VELOCITY = -860;
@@ -32,7 +32,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   private static readonly JUMP_BUFFER_MS = 120;
 
   constructor(scene: Phaser.Scene, x: number, y: number, classId: string) {
-    super(scene, x, y, 'chars', 0);
+    const spriteFrame = CONSULTANT_CLASSES.find(c => c.id === classId)?.spriteFrame ?? 0;
+    super(scene, x, y, 'chars', spriteFrame);
     this.classId = classId;
     this.hp = MAX_HP;
 
@@ -99,11 +100,11 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
     // Animations
     if (!onGround) {
-      this.play('player-jump', true);
+      this.play(`${this.classId}-player-jump`, true);
     } else if (goLeft || goRight) {
-      this.play('player-walk', true);
+      this.play(`${this.classId}-player-walk`, true);
     } else {
-      this.play('player-idle', true);
+      this.play(`${this.classId}-player-idle`, true);
     }
 
     // Tint while invincible
