@@ -1,6 +1,6 @@
 # AGENTS.md — Dungeons & Deliverables
 
-A browser-based dungeon crawler where the player is an IT consultant navigating a corporate dungeon, with an Express backend that proxies OpenAI calls as the Dungeon Master.
+A browser-based side-scrolling platformer where the player is an IT consultant navigating a corporate dungeon. Built with React + Phaser 3. No backend or AI required — fully self-contained.
 
 ## Skills
 
@@ -13,9 +13,7 @@ https://github.com/Rambolarsen/friendly-funicular/issues
 ## Commands
 
 ```bash
-npm run dev          # Start both client (port 5173) and server (port 3001) concurrently
-npm run dev:client   # Vite frontend only
-npm run dev:server   # Express backend only (ts-node)
+npm run dev          # Start Vite dev server (port 5173)
 npm run build        # tsc + vite build
 npm run lint         # eslint
 ```
@@ -25,29 +23,33 @@ No test suite exists.
 ## Architecture
 
 ```
-src/                    # React + TypeScript frontend (Vite)
-  App.tsx               # Root: routes between screens based on GameState.phase
-  screens/              # StartScreen, GameScreen, EndScreen
-  components/           # Pure UI: ActionCard, ClassCard, NarrationLog, StatBar
-  hooks/useGameState.ts # All game logic — the single source of truth
-  engine/gameEngine.ts  # Pure functions: stat clamping, win/lose checks, log helpers
-  services/aiService.ts # fetch calls to /api/* with null-return on failure
-  constants/            # classes.ts, fallbackRooms.ts, initialState.ts
-  types/game.ts         # All shared types
-
-server/
-  index.ts              # Express app with 3 POST endpoints, proxied by Vite in dev
+src/
+  App.tsx               # Root: routes between start / playing / end phases
+  screens/              # StartScreen (class selection), EndScreen (win/lose)
+  components/           # Pure UI: ClassCard, StatBar
+  engine/gameEngine.ts  # Pure functions: applyStatChanges, checkWinLose, clampStat
+  constants/            # classes.ts, initialState.ts
+  types/game.ts         # All shared types (GameStats, ConsultantClass, GamePhase, GameOverPayload)
+  game/
+    config.ts           # Phaser.Game config factory — registers BootScene + GameScene
+    PhaserGame.tsx      # React component: mounts/destroys Phaser instance, HUD overlay
+    eventKeys.ts        # STATS_CHANGED, GAME_OVER event key constants
+    scenes/
+      BootScene.ts      # Generates all placeholder textures, then starts GameScene
+      GameScene.ts      # Main platformer: platforms, enemies, camera, stat events, win/lose
+    entities/
+      Player.ts         # Arcade physics sprite, keyboard input, attack hitbox, class kill modifiers
+      Enemy.ts          # Patrol AI sprite; SpectreEnemy subclass fires projectiles
+      Boss.ts           # Boss enemy — charge attacks, higher HP
+    levels/
+      types.ts          # LevelData, PlatformData, EnemySpawnData, LootData, EnemyType
+      level1.ts         # Level 1 platform + enemy layout
+      bossLevel.ts      # Boss room layout
 ```
 
-Vite proxies `/api/*` → `http://localhost:3001` in development. In production, the Express server must be run separately.
+Phaser runs inside the `<PhaserGame>` React component during the `playing` phase. The React HUD overlay (StatBar components) sits absolutely positioned over the canvas and is updated via `game.events.on(STATS_CHANGED, ...)`.
 
 ## Key Conventions
-
-### Dual-path AI fallback pattern
-Every AI call returns `null` on any failure — `aiService.ts` catches all errors and returns `null`. The hook (`useGameState.ts`) always checks for null and falls back to deterministic content (`FALLBACK_ROOMS` for rooms, `buildFallbackResolution()` for action resolution). The game must always be fully playable without an API key.
-
-### `stateRef` for async safety
-`useGameState` maintains both `useState` and a `useRef` (`stateRef`) that mirrors state. Because `loadRoom` and `chooseAction` are async and call `updateState` after awaits, `stateRef.current` is read (not the stale closure value) when a fresh snapshot is needed mid-async-flow.
 
 ### Stat system
 - All 6 stats (`budget`, `clientHappiness`, `technicalDebt`, `teamMorale`, `deliveryProgress`, `complianceRisk`) are integers 0–100.
@@ -56,34 +58,36 @@ Every AI call returns `null` on any failure — `aiService.ts` catches all error
 - Lose conditions: `budget <= 0`, `teamMorale <= 0`, `technicalDebt >= 100`, `complianceRisk >= 100`.
 
 ### Game progression
-- Rooms are numbered 1–N; room 8+ triggers the boss (`isBoss = true`).
-- `floor = Math.ceil(roomNumber / 2)`.
-- `GamePhase` cycles: `start` → `playing` → `resolving` → `playing` (repeat) → `end`.
+- Two levels: Level 1 → Boss Level.
+- Level 1 ends when the player reaches `exitX`; emits `deliveryProgress +10` then starts Boss Level.
+- Boss Level ends when the Boss enemy is defeated.
+- `GamePhase` cycles: `start` → `playing` → `end`.
 
-### Fallback resolution seeding
-`buildFallbackResolution` in `useGameState.ts` uses a deterministic `hashString` seed derived from `room.id + action.id + customAction + classId + roomCount` so fallback outcomes are stable (same action in same room always produces the same result).
+### Phaser ↔ React bridge
+- `GameScene` emits `STATS_CHANGED` (payload: `GameStats`) and `GAME_OVER` (payload: `GameOverPayload`) on `game.events`.
+- `PhaserGame.tsx` listens for these events and updates React state / calls `onGameOver`.
+- Stats are also written to `game.registry` so scene restarts can read the latest values.
 
-### OpenAI server conventions
-- Model defaults to `gpt-4o-mini`; override via `OPENAI_MODEL` env var.
-- All AI endpoints use `responseFormat: 'json_object'` except `/api/final-report` (plain text).
-- Prompts always specify exact JSON response shapes inline.
-- `callOpenAI` throws on HTTP error; callers wrap in try/catch and return 500.
+### Enemy stat drops on kill
+Each enemy type drops fixed stat changes when defeated. The player's consultant class adds a passive kill bonus on top (defined in `Player.ts` as `CLASS_KILL_BONUSES`). The `intern` class uses a random stat/value each kill.
 
 ### Types live in `src/types/game.ts`
-All shared types (`GameState`, `GameStats`, `Room`, `Action`, `Resolution`, `ConsultantClass`, etc.) are defined there. Don't define game types elsewhere.
+All shared types (`GameStats`, `ConsultantClass`, `GamePhase`, `GameOverPayload`) are defined there. Level-specific types live in `src/game/levels/types.ts`.
 
 ### Class IDs
-The canonical class IDs used in `classModifiers` (fallback stat bonuses) are: `architect`, `developer`, `ux`, `datascientist`, `pm`, `security`, `accountmanager`, `intern`. The `intern` class uses fully random stat changes.
+The canonical class IDs used in `CLASS_KILL_BONUSES` (passive kill stat bonuses): `architect`, `developer`, `ux`, `datascientist`, `pm`, `security`, `accountmanager`, `intern`. The `intern` class uses fully random stat changes.
+
+### Placeholder graphics
+No external sprite assets. All textures are generated in `BootScene.create()` using `this.make.graphics()` + `generateTexture()`. Easy to replace with real sprites later by adding a `preload()` step.
 
 ## Keeping This File Updated
 
 When making changes to the project, update this file if any of the following change:
 
 - **Commands** — new or renamed npm scripts
-- **Architecture** — new files/directories with a distinct role, removed layers, or changes to the Vite proxy or server setup
+- **Architecture** — new files/directories with a distinct role, removed layers
 - **Stat system** — win/lose thresholds, stat names, clamping rules
-- **Game progression** — room count, boss trigger logic, phase names
-- **AI endpoints** — new routes, changed request/response shapes, model defaults
-- **Fallback behaviour** — changes to how rooms or resolutions fall back when AI is unavailable
-- **Type locations** — if shared types move out of `src/types/game.ts`
+- **Game progression** — level count, boss trigger logic, phase names
+- **Phaser ↔ React bridge** — event keys, payload shapes
+- **Type locations** — if shared types move
 - **Class IDs** — additions, removals, or renamed consultant classes

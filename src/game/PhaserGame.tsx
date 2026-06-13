@@ -1,7 +1,8 @@
 import Phaser from 'phaser';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { INITIAL_STATS } from '../constants/initialState';
 import { ConsultantClass, GameOverPayload, GameStats } from '../types/game';
+import { StatBar } from '../components/StatBar';
 import { createGameConfig } from './config';
 import { GAME_OVER, STATS_CHANGED } from './eventKeys';
 
@@ -14,8 +15,7 @@ export function PhaserGame({ selectedClass, onGameOver }: PhaserGameProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const gameRef = useRef<Phaser.Game | null>(null);
   const onGameOverRef = useRef(onGameOver);
-  // statsRef holds current stats for HUD overlay (issue #10); swap to useState then
-  const statsRef = useRef<GameStats>({ ...INITIAL_STATS });
+  const [stats, setStats] = useState<GameStats>({ ...INITIAL_STATS });
 
   useEffect(() => {
     onGameOverRef.current = onGameOver;
@@ -28,7 +28,7 @@ export function PhaserGame({ selectedClass, onGameOver }: PhaserGameProps) {
     gameRef.current = game;
 
     const onStatsChanged = (newStats: GameStats) => {
-      statsRef.current = { ...newStats };
+      setStats({ ...newStats });
     };
 
     const onGameOverEvent = ({ outcome, stats: finalStats, reason }: GameOverPayload) => {
@@ -44,14 +44,26 @@ export function PhaserGame({ selectedClass, onGameOver }: PhaserGameProps) {
       game.destroy(true);
       gameRef.current = null;
     };
-  // selectedClass intentionally omitted: registry is set once at game creation; onGameOver called once at game end
+  // selectedClass intentionally omitted: registry is set once at game creation
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
     <div className="relative w-full h-full">
       <div ref={containerRef} />
-      {/* HUD overlay mounts here in issue #10; swap statsRef to useState then */}
+
+      {/* HUD overlay — stat bars rendered over the Phaser canvas */}
+      <div className="pointer-events-none absolute right-2 top-2 w-48 rounded-xl border border-gray-700 bg-gray-950/80 p-3 backdrop-blur-sm">
+        <p className="mb-2 text-[10px] font-bold tracking-widest text-purple-300">
+          {selectedClass.emoji} {selectedClass.name.toUpperCase()}
+        </p>
+        <StatBar label="Budget"           value={stats.budget}           emoji="💰" />
+        <StatBar label="Client Happiness" value={stats.clientHappiness}  emoji="😊" />
+        <StatBar label="Team Morale"      value={stats.teamMorale}       emoji="💪" />
+        <StatBar label="Delivery"         value={stats.deliveryProgress} emoji="🚀" />
+        <StatBar label="Tech Debt"        value={stats.technicalDebt}    emoji="🕷️" inverted />
+        <StatBar label="Compliance Risk"  value={stats.complianceRisk}   emoji="⚖️" inverted />
+      </div>
     </div>
   );
 }

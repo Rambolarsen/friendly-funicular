@@ -1,6 +1,8 @@
 import Phaser from 'phaser';
 import { INITIAL_STATS } from '../constants/initialState';
 import { ConsultantClass } from '../types/game';
+import { BootScene } from './scenes/BootScene';
+import { GameScene } from './scenes/GameScene';
 
 export function createGameConfig(
   parent: HTMLElement,
@@ -16,7 +18,7 @@ export function createGameConfig(
       default: 'arcade',
       arcade: { gravity: { x: 0, y: 600 }, debug: false },
     },
-    scene: [],
+    scene: [BootScene, GameScene],
     callbacks: {
       preBoot: (game: Phaser.Game) => {
         game.registry.set('selectedClass', selectedClass);
