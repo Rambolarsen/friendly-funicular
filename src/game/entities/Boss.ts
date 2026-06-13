@@ -35,20 +35,30 @@ export class Boss extends Enemy {
   }
 
   patrol() {
+    const time = this.scene.time.now;
     const body = this.body as Phaser.Physics.Arcade.Body;
+    const movement = this.getMovementState(time);
+
+    if (movement.underKnockback) {
+      return;
+    }
+    if (movement.immobilized) {
+      body.setVelocityX(0);
+      return;
+    }
 
     if (this.isCharging) {
-      body.setVelocityX(this.chargeDirection * CHARGE_SPEED);
+      body.setVelocityX(this.chargeDirection * CHARGE_SPEED * movement.speedMultiplier);
       return;
     }
 
     // Normal patrol
     if (this.x > this.patrolCenter + this.patrolRange) this.direction = -1;
     if (this.x < this.patrolCenter - this.patrolRange) this.direction = 1;
-    body.setVelocityX(this.direction * BOSS_SPEED);
-    this.setFlipX(this.direction === -1);
+    body.setVelocityX(movement.direction * BOSS_SPEED * movement.speedMultiplier);
+    this.setFlipX(movement.direction === -1);
 
-    if (this.scene.time.now > this.nextChargeTime) {
+    if (time > this.nextChargeTime) {
       this.startCharge();
     }
   }

@@ -18,6 +18,7 @@ export class BootScene extends Phaser.Scene {
     this.load.image('loot-budget', 'assets/sprites/loot-budget.png');
     this.load.image('loot-morale', 'assets/sprites/loot-morale.png');
     this.load.image('loot-debt',   'assets/sprites/loot-debt.png');
+    this.load.image('loot-compliance', 'assets/sprites/loot-compliance.png');
     this.load.image('exit-sign',   'assets/sprites/exit-sign.png');
   }
 
