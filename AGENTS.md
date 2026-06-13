@@ -1,6 +1,6 @@
 # AGENTS.md — Dungeons & Deliverables
 
-A browser-based side-scrolling platformer where the player is an IT consultant navigating a corporate dungeon. Built with React + Phaser 3, with a separate Node-based multiplayer server package under `server/`. No AI required.
+A browser-based side-scrolling platformer where the player is an IT consultant navigating a corporate dungeon. Built with React + Phaser 3. No backend or AI required — fully self-contained.
 
 ## Skills
 
@@ -16,9 +16,6 @@ https://github.com/Rambolarsen/friendly-funicular/issues
 
 ```bash
 npm run dev          # Start Vite dev server (port 5173)
-cd server && npm install  # Install separate server package dependencies first
-npm run server       # Start the multiplayer server package in watch mode
-npm run dev:all      # Run client and server dev processes together
 npm run build        # tsc + vite build
 npm run lint         # eslint
 ```
@@ -28,10 +25,6 @@ No test suite exists.
 ## Architecture
 
 ```
-server/
-  package.json          # Separate CommonJS package for the multiplayer server
-  tsconfig.json         # TypeScript config for the server package
-  src/index.ts          # Minimal Express + Socket.IO server entrypoint
 src/
   App.tsx               # Root: routes between start / playing / end phases
   screens/              # StartScreen (class selection), EndScreen (win/lose)
