@@ -1,34 +1,70 @@
 import Phaser from 'phaser';
 
-/** Generates all placeholder textures from Phaser Graphics objects. No external files needed. */
+/**
+ * Loads Kenney Pixel Platformer sprite assets and defines all character animations.
+ * Characters use the 'chars' spritesheet (9×3 grid, 24×24 px frames, 1px gap).
+ */
 export class BootScene extends Phaser.Scene {
   constructor() {
     super({ key: 'BootScene' });
   }
 
-  create() {
-    this.makeRect('player',       24, 40,  0x60a5fa); // blue
-    this.makeRect('platform',     32, 16,  0x6b7280); // gray
-    this.makeRect('enemy-goblin', 20, 28,  0x4ade80); // green
-    this.makeRect('enemy-wraith', 18, 30,  0xa78bfa); // purple
-    this.makeRect('enemy-troll',  28, 36,  0x78350f); // brown
-    this.makeRect('enemy-spectre',20, 28,  0x67e8f9); // cyan
-    this.makeRect('boss',         56, 64,  0xef4444); // red
-    this.makeRect('loot-budget',  18, 18,  0xfbbf24); // gold
-    this.makeRect('loot-morale',  18, 18,  0x34d399); // mint
-    this.makeRect('loot-debt',    18, 18,  0xf87171); // red-light
-    this.makeRect('exit-sign',    24, 48,  0x22c55e); // bright green
-
-    this.scene.start('GameScene');
+  preload() {
+    this.load.spritesheet('chars', 'assets/sprites/chars.png', {
+      frameWidth: 24, frameHeight: 24, spacing: 1,
+    });
+    this.load.image('platform',    'assets/sprites/platform.png');
+    this.load.image('loot-budget', 'assets/sprites/loot-budget.png');
+    this.load.image('loot-morale', 'assets/sprites/loot-morale.png');
+    this.load.image('loot-debt',   'assets/sprites/loot-debt.png');
+    this.load.image('exit-sign',   'assets/sprites/exit-sign.png');
   }
 
-  private makeRect(key: string, w: number, h: number, color: number) {
-    const g = this.make.graphics();
-    g.fillStyle(color, 1);
-    g.fillRoundedRect(0, 0, w, h, 4);
-    g.lineStyle(1, 0x000000, 0.4);
-    g.strokeRoundedRect(0, 0, w, h, 4);
-    g.generateTexture(key, w, h);
-    g.destroy();
+  create() {
+    // ── Player animations (frames 0-3: blue alien, row 0) ────────────────────
+    this.anims.create({
+      key: 'player-walk',
+      frames: this.anims.generateFrameNumbers('chars', { frames: [0, 1, 2, 3] }),
+      frameRate: 10, repeat: -1,
+    });
+    this.anims.create({
+      key: 'player-idle',
+      frames: this.anims.generateFrameNumbers('chars', { frames: [0] }),
+      frameRate: 1, repeat: -1,
+    });
+    this.anims.create({
+      key: 'player-jump',
+      frames: this.anims.generateFrameNumbers('chars', { frames: [3] }),
+      frameRate: 1, repeat: 0,
+    });
+
+    // ── Enemy animations ──────────────────────────────────────────────────────
+    this.anims.create({
+      key: 'goblin-walk',
+      frames: this.anims.generateFrameNumbers('chars', { frames: [4, 5] }),
+      frameRate: 6, repeat: -1,
+    });
+    this.anims.create({
+      key: 'wraith-walk',
+      frames: this.anims.generateFrameNumbers('chars', { frames: [6, 7] }),
+      frameRate: 6, repeat: -1,
+    });
+    this.anims.create({
+      key: 'troll-walk',
+      frames: this.anims.generateFrameNumbers('chars', { frames: [9, 10] }),
+      frameRate: 4, repeat: -1,
+    });
+    this.anims.create({
+      key: 'spectre-idle',
+      frames: this.anims.generateFrameNumbers('chars', { frames: [8] }),
+      frameRate: 1, repeat: -1,
+    });
+    this.anims.create({
+      key: 'boss-walk',
+      frames: this.anims.generateFrameNumbers('chars', { frames: [21, 22] }),
+      frameRate: 5, repeat: -1,
+    });
+
+    this.scene.start('GameScene');
   }
 }

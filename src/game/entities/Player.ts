@@ -30,7 +30,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   private attackBox: Phaser.GameObjects.Rectangle | null = null;
 
   constructor(scene: Phaser.Scene, x: number, y: number, classId: string) {
-    super(scene, x, y, 'player');
+    super(scene, x, y, 'chars', 0);
     this.classId = classId;
     this.hp = MAX_HP;
 
@@ -39,7 +39,9 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
     const body = this.body as Phaser.Physics.Arcade.Body;
     body.setGravityY(0);
-    body.setSize(24, 40);
+    body.setSize(20, 22);
+    body.setOffset(2, 2);
+    this.setDisplaySize(28, 28);
     this.setDepth(10);
 
     const kb = scene.input.keyboard!;
@@ -87,6 +89,15 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     if (attackPressed && time > this.attackCooldownTimer) {
       this.attackCooldownTimer = time + ATTACK_COOLDOWN;
       this.showAttackBox();
+    }
+
+    // Animations
+    if (!onGround) {
+      this.play('player-jump', true);
+    } else if (goLeft || goRight) {
+      this.play('player-walk', true);
+    } else {
+      this.play('player-idle', true);
     }
 
     // Tint while invincible

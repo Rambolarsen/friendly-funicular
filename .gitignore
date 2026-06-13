@@ -22,3 +22,10 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Brainstorming / superpowers session files
+.superpowers/
+
+# Downloaded asset archives (sprites are committed individually)
+public/assets/kenney_pixel-platformer.zip
+public/assets/kenney_extract/

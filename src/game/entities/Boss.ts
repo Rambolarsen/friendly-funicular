@@ -16,10 +16,11 @@ export class Boss extends Enemy {
   private chargeDirection: 1 | -1 = 1;
 
   constructor(scene: Phaser.Scene, x: number, y: number) {
-    super(scene, x, y, EnemyType.Troll); // reuse troll texture, overridden below
-    // Re-scale for boss size
-    this.setTexture('boss');
-    this.setScale(1);
+    super(scene, x, y, EnemyType.Troll); // uses chars spritesheet; overridden below
+    this.setTexture('chars', 21);
+    this.setDisplaySize(48, 48);
+    this.animKey = 'boss-walk';
+    this.play('boss-walk');
     this.hp = BOSS_HP;
     this.maxHp = BOSS_HP;
     this.speed = BOSS_SPEED;

@@ -87,8 +87,13 @@ Plain data types (`RawStats`, `ConsultantClass`, `GamePhase`, `GameOverPayload`)
 ### Class IDs
 The canonical class IDs used in `CLASS_KILL_BONUSES` (passive kill stat bonuses): `architect`, `developer`, `ux`, `datascientist`, `pm`, `security`, `accountmanager`, `intern`. The `intern` class uses fully random stat changes.
 
-### Placeholder graphics
-No external sprite assets. All textures are generated in `BootScene.create()` using `this.make.graphics()` + `generateTexture()`. Easy to replace with real sprites later by adding a `preload()` step.
+### Sprite assets
+Real pixel art sprites from the [Kenney Pixel Platformer](https://kenney.nl/assets/pixel-platformer) pack (CC0 public domain) live in `public/assets/sprites/`:
+- `chars.png` — 9×3 character spritesheet (24×24 px frames, 1px gap); used for player, all enemies, and boss
+- `platform.png` — 18×18 grass-top tile; tiled across platforms via `add.tileSprite`
+- `loot-budget.png`, `loot-morale.png`, `loot-debt.png` — loot item tiles (18×18)
+
+`BootScene.preload()` loads all sprites; `BootScene.create()` defines 8 named animations (`player-walk`, `player-idle`, `player-jump`, `goblin-walk`, `wraith-walk`, `troll-walk`, `spectre-idle`, `boss-walk`). Player and enemies play these animations in their `update()`/`preUpdate()` loops.
 
 ## Session Hygiene
 

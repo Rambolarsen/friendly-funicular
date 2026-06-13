@@ -3,16 +3,18 @@ import { EnemyType } from '../levels/types';
 
 export const ENEMY_CONFIGS: Record<EnemyType, {
   texture: string;
+  startFrame: number;
+  animKey: string;
+  tint?: number;
   hp: number;
   speed: number;
   contactDamage: number;
   patrolRange: number;
-  color: number;
 }> = {
-  [EnemyType.Goblin]:  { texture: 'enemy-goblin',  hp: 30,  speed: 60,  contactDamage: 10, patrolRange: 120, color: 0x4ade80 },
-  [EnemyType.Wraith]:  { texture: 'enemy-wraith',  hp: 20,  speed: 110, contactDamage: 8,  patrolRange: 160, color: 0xa78bfa },
-  [EnemyType.Troll]:   { texture: 'enemy-troll',   hp: 60,  speed: 40,  contactDamage: 15, patrolRange: 80,  color: 0x92400e },
-  [EnemyType.Spectre]: { texture: 'enemy-spectre', hp: 25,  speed: 50,  contactDamage: 5,  patrolRange: 100, color: 0x67e8f9 },
+  [EnemyType.Goblin]:  { texture: 'chars', startFrame: 4,  animKey: 'goblin-walk',  hp: 30,  speed: 60,  contactDamage: 10, patrolRange: 120 },
+  [EnemyType.Wraith]:  { texture: 'chars', startFrame: 6,  animKey: 'wraith-walk',  tint: 0xa78bfa, hp: 20,  speed: 110, contactDamage: 8,  patrolRange: 160 },
+  [EnemyType.Troll]:   { texture: 'chars', startFrame: 9,  animKey: 'troll-walk',   hp: 60,  speed: 40,  contactDamage: 15, patrolRange: 80  },
+  [EnemyType.Spectre]: { texture: 'chars', startFrame: 8,  animKey: 'spectre-idle', tint: 0x67e8f9, hp: 25,  speed: 50,  contactDamage: 5,  patrolRange: 100 },
 };
 
 export class Enemy extends Phaser.Physics.Arcade.Sprite {
@@ -24,13 +26,15 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
   protected patrolRange: number;
   protected direction: 1 | -1 = 1;
   protected speed: number;
+  protected animKey: string = '';
+  private baseTint: number | null = null;
 
   private hpBar: Phaser.GameObjects.Rectangle;
   private hpBarBg: Phaser.GameObjects.Rectangle;
 
   constructor(scene: Phaser.Scene, x: number, y: number, type: EnemyType) {
     const cfg = ENEMY_CONFIGS[type];
-    super(scene, x, y, cfg.texture);
+    super(scene, x, y, cfg.texture, cfg.startFrame);
     this.enemyType = type;
     this.hp = cfg.hp;
     this.maxHp = cfg.hp;
@@ -38,11 +42,19 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     this.contactDamage = cfg.contactDamage;
     this.patrolCenter = x;
     this.patrolRange = cfg.patrolRange;
+    this.animKey = cfg.animKey;
 
     scene.add.existing(this);
     scene.physics.add.existing(this);
     (this.body as Phaser.Physics.Arcade.Body).setGravityY(0);
+    this.setDisplaySize(24, 24);
+    if (cfg.tint) {
+      this.setTint(cfg.tint);
+      this.baseTint = cfg.tint;
+    }
     this.setDepth(8);
+
+    this.play(cfg.animKey);
 
     // HP bar (background + fill)
     this.hpBarBg = scene.add.rectangle(x, y - 20, 32, 4, 0x333333).setDepth(15);
@@ -69,7 +81,10 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     this.hp = Math.max(0, this.hp - amount);
     this.updateHpBar();
     this.setTint(0xff4444);
-    this.scene.time.delayedCall(100, () => this.clearTint());
+    this.scene.time.delayedCall(100, () => {
+      if (this.baseTint) this.setTint(this.baseTint);
+      else this.clearTint();
+    });
     return this.hp <= 0;
   }
 
