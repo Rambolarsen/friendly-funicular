@@ -2,15 +2,23 @@
   "version": "2.0.0",
   "tasks": [
     {
+      "label": "Kill Dev Ports",
+      "type": "shell",
+      "command": "foreach ($port in @(3001, 5173)) { $p = (Get-NetTCPConnection -LocalPort $port -ErrorAction SilentlyContinue).OwningProcess; if ($p) { Stop-Process -Id $p -Force -ErrorAction SilentlyContinue; Write-Host \"Killed process on port $port\" } }; Write-Host 'Ports cleared'",
+      "presentation": {
+        "reveal": "silent",
+        "panel": "dedicated",
+        "close": true
+      },
+      "problemMatcher": []
+    },
+    {
       "label": "npm: dev",
       "type": "shell",
       "command": "npm run dev",
-      "group": "build",
       "isBackground": true,
       "problemMatcher": {
-        "pattern": {
-          "regexp": "^$"
-        },
+        "pattern": { "regexp": "^$" },
         "background": {
           "activeOnStart": true,
           "beginsPattern": "VITE",
@@ -22,12 +30,9 @@
       "label": "npm: server",
       "type": "shell",
       "command": "npm run server",
-      "group": "build",
       "isBackground": true,
       "problemMatcher": {
-        "pattern": {
-          "regexp": "^$"
-        },
+        "pattern": { "regexp": "^$" },
         "background": {
           "activeOnStart": true,
           "beginsPattern": ".",
@@ -37,10 +42,8 @@
     },
     {
       "label": "Start Dev + Server",
-      "dependsOn": ["npm: dev", "npm: server"],
-      "dependsOrder": "parallel",
-      "group": "build",
-      "isBackground": true,
+      "dependsOn": ["Kill Dev Ports", "npm: dev", "npm: server"],
+      "dependsOrder": "sequence",
       "problemMatcher": []
     }
   ]

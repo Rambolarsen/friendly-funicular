@@ -30,27 +30,31 @@ io.on('connection', (socket) => {
   socket.emit('lobby_update', { rooms: lobby.getLobbyInfo() });
 
   socket.on('join_room', (payload: JoinRoomPayload) => {
-    const { roomId, classId, name } = payload;
-    const room = lobby.getOrCreate(roomId);
+    try {
+      const { roomId, classId, name } = payload;
+      const room = lobby.getOrCreate(roomId);
 
-    room.addPlayer(socket.id, name, classId);
-    socket.join(room.id);
+      room.addPlayer(socket.id, name, classId);
+      socket.join(room.id);
 
-    socket.to(room.id).emit('player_joined', {
-      id: socket.id,
-      classId,
-      name,
-    });
+      socket.to(room.id).emit('player_joined', {
+        id: socket.id,
+        classId,
+        name,
+      });
 
-    socket.emit('room_joined', {
-      roomId: room.id,
-      playerId: socket.id,
-      state: {
-        players: Array.from(room.players.values()),
-        enemies: Array.from(room.enemies.values()),
-        enemyCount: room.enemies.size,
-      },
-    });
+      socket.emit('room_joined', {
+        roomId: room.id,
+        playerId: socket.id,
+        state: {
+          players: Array.from(room.players.values()),
+          enemies: Array.from(room.enemies.values()),
+          enemyCount: room.enemies.size,
+        },
+      });
+    } catch (err) {
+      console.error('[join_room] error:', err);
+    }
   });
 
   socket.on('player_update', (payload: PlayerUpdatePayload) => {
@@ -81,6 +85,20 @@ io.on('connection', (socket) => {
 
 httpServer.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
+});
+
+process.on('exit', (code) => {
+  console.error(`[SERVER] process exiting with code ${code}`);
+});
+
+process.on('uncaughtException', (err) => {
+  console.error('[FATAL] Uncaught exception:', err);
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.error('[FATAL] Unhandled rejection:', reason);
+  process.exit(1);
 });
 
 httpServer.on('error', (err: NodeJS.ErrnoException) => {

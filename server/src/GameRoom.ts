@@ -208,6 +208,15 @@ export class GameRoom {
   }
 
   private tick(): void {
+    try {
+      this._tick();
+    } catch (err) {
+      console.error('[GameRoom] tick error:', err);
+      this.stopLoop();
+    }
+  }
+
+  private _tick(): void {
     const now = Date.now();
     const delta = now - this.lastTick;
     this.lastTick = now;
