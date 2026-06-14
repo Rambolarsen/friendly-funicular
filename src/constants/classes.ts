@@ -101,3 +101,55 @@ export const CLASS_ATTACK_DAMAGE: Record<string, number | null> = {
   accountmanager: 25,
   intern:         null,
 };
+
+/** One-liners each class may say at random when attacking (15% chance per attack). */
+export const CLASS_ATTACK_QUOTES: Record<string, string[]> = {
+  architect:      [
+    'Have you considered a microservices approach?',
+    'The monolith must die.',
+    'We should decouple this.',
+    'This needs an event sourcing layer.',
+  ],
+  developer:      [
+    'It works on my machine.',
+    'Just push to prod.',
+    "I'll fix it after the release.",
+    'Ship it.',
+  ],
+  ux:             [
+    'Did you test this with real users?',
+    'The button should be bigger.',
+    'More whitespace.',
+    "Users don't read.",
+  ],
+  datascientist:  [
+    "Correlation isn't causation.",
+    'The model needs more data.',
+    'Statistically insignificant.',
+    "I'll just train another model.",
+  ],
+  pm:             [
+    'Per my last email\u2026',
+    "Let's sync on this.",
+    'Can we park that?',
+    'Moving the deadline forward.',
+  ],
+  security:       [
+    "That's a security risk.",
+    'Password must be 64 characters.',
+    'We need a pentest.',
+    'Zero trust.',
+  ],
+  accountmanager: [
+    "I'll set up a call.",
+    'The client loves this.',
+    'Just say yes for now.',
+    "Let's manage expectations.",
+  ],
+  intern:         [
+    'I Googled it.',
+    'ChatGPT wrote this.',
+    'Is this right?',
+    'I just started Monday.',
+  ],
+};
