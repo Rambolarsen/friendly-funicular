@@ -6,6 +6,7 @@ import { EnemyType } from '../levels/types';
 import { CLASS_MODIFIERS, CLASS_ATTACK_DAMAGE, CLASS_ATTACK_QUOTES } from '../../constants/classes';
 import { ATTACK_USED } from '../eventKeys';
 import { soundManager } from '../sound';
+import { mobileInput } from '../mobileInput';
 
 const MOVE_SPEED = 200;
 const JUMP_VELOCITY = -860;
@@ -38,6 +39,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   private attackVictims = new WeakSet<object>();
   private invincibilityTween: Phaser.Tweens.Tween | null = null;
   private jumpBufferTimer = 0;
+  private prevMobileAttack = false;
   currentAnimKey = 'player-idle';
   private static readonly JUMP_BUFFER_MS = 120;
 
@@ -71,8 +73,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     const onGround = body.blocked.down;
 
     // Horizontal movement
-    const goLeft  = this.cursors.left.isDown  || this.wasd.left.isDown;
-    const goRight = this.cursors.right.isDown || this.wasd.right.isDown;
+    const goLeft  = this.cursors.left.isDown  || this.wasd.left.isDown  || mobileInput.left;
+    const goRight = this.cursors.right.isDown || this.wasd.right.isDown || mobileInput.right;
 
     if (goLeft) {
       body.setVelocityX(-MOVE_SPEED);
@@ -87,7 +89,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     // Jump (hold to auto-jump on landing; 120ms buffer for early presses)
     const jumpPressed = this.cursors.up.isDown
       || (this.cursors.space as Phaser.Input.Keyboard.Key).isDown
-      || this.wasd.up.isDown;
+      || this.wasd.up.isDown
+      || mobileInput.jump;
     if (jumpPressed) {
       this.jumpBufferTimer = time + Player.JUMP_BUFFER_MS;
     }
@@ -98,7 +101,9 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     }
 
     // Attack
-    const attackPressed = Phaser.Input.Keyboard.JustDown(this.attackKey);
+    const mobileAttackJustDown = mobileInput.attack && !this.prevMobileAttack;
+    this.prevMobileAttack = mobileInput.attack;
+    const attackPressed = Phaser.Input.Keyboard.JustDown(this.attackKey) || mobileAttackJustDown;
     if (attackPressed && time > this.attackCooldownTimer) {
       this.attackCooldownTimer = time + ATTACK_COOLDOWN;
       this.showAttackBox();
