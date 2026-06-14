@@ -230,6 +230,17 @@ export class GameScene extends Phaser.Scene {
         }
       }
 
+      // Fall-off detection in multiplayer: respawn at start with HP penalty
+      if (this.player.y > this.currentLevel.height + 50) {
+        const { x, y } = this.currentLevel.playerStart;
+        this.player.setPosition(x, y);
+        (this.player.body as Phaser.Physics.Arcade.Body).setVelocity(0, 0);
+        this.player.hp = Math.max(1, this.player.hp - 25);
+        this.player.grantInvincibility(time);
+        soundManager.playerHurt();
+        this.updateHUD();
+      }
+
       return; // skip local enemy logic in multiplayer
     }
     this.updateAbilityTelegraph();
@@ -327,8 +338,15 @@ export class GameScene extends Phaser.Scene {
   }
 
   private setupColliders() {
-    this.physics.add.collider(this.player, this.platforms);
-    this.physics.add.collider(this.enemies, this.platforms);
+    // One-way platforms: only collide when the body is falling onto the top surface.
+    // This lets players and enemies jump through from below.
+    const oneWay = (obj: Phaser.Types.Physics.Arcade.GameObjectWithBody, platform: Phaser.Types.Physics.Arcade.GameObjectWithBody) => {
+      const body = obj.body as Phaser.Physics.Arcade.Body;
+      const platBody = platform.body as Phaser.Physics.Arcade.StaticBody;
+      return body.velocity.y >= 0 && body.bottom - body.velocity.y * (1 / 60) <= platBody.top + 4;
+    };
+    this.physics.add.collider(this.player, this.platforms, undefined, oneWay as Phaser.Types.Physics.Arcade.ArcadePhysicsCallback, this);
+    this.physics.add.collider(this.enemies, this.platforms, undefined, oneWay as Phaser.Types.Physics.Arcade.ArcadePhysicsCallback, this);
 
     // Player touches enemy — contact damage
     this.physics.add.overlap(this.player, this.enemies, (_p, obj) => {
