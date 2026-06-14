@@ -1,0 +1,18 @@
+{
+  "name": "Dungeons & Deliverables",
+  "short_name": "D&D",
+  "description": "A corporate fantasy dungeon crawler about surviving impossible AI projects.",
+  "start_url": "/",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#1a0a2e",
+  "theme_color": "#1a0a2e",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
