@@ -11,6 +11,8 @@ import { createGameConfig } from './config';
 import { ABILITY_USED, ATTACK_USED, GAME_OVER, LEVEL_STARTED, STATS_CHANGED } from './eventKeys';
 import { SocketClient } from './network/SocketClient';
 import { ATTACK_COOLDOWN } from './entities/Player';
+import { useIsMobile } from '../hooks/useIsMobile';
+import { MobileControls } from '../components/MobileControls';
 
 interface PhaserGameProps {
   selectedClass: ConsultantClass;
@@ -171,6 +173,7 @@ export function PhaserGame({ selectedClass, onGameOver, onReturnHome, socket, ro
   const totalCooldownLabel = `${(abilityDefinition.cooldownMs / 1000).toFixed(0)}s cooldown`;
   const cooldownDegrees = abilityUi.progress * 360;
   const cooldownRing = `conic-gradient(${abilityTheme.accent} 0deg ${cooldownDegrees}deg, rgba(15, 23, 42, 0.72) ${cooldownDegrees}deg 360deg)`;
+  const isMobile = useIsMobile();
 
   return (
     <div className="relative w-full h-full">
@@ -179,7 +182,7 @@ export function PhaserGame({ selectedClass, onGameOver, onReturnHome, socket, ro
       {/* Home button */}
       <button
         onClick={() => setConfirmOpen(true)}
-        className="pointer-events-auto absolute left-2 top-2 flex h-9 w-9 items-center justify-center rounded-xl border border-purple-800 bg-slate-950/90 text-lg backdrop-blur-sm transition-transform duration-150 hover:scale-105 hover:border-purple-600"
+        className="pointer-events-auto absolute left-3 top-3 flex h-11 w-11 items-center justify-center rounded-xl border border-purple-800 bg-slate-950/90 text-xl backdrop-blur-sm transition-transform duration-150 hover:scale-105 hover:border-purple-600"
         title="Return to main menu"
       >
         🏠
@@ -194,95 +197,141 @@ export function PhaserGame({ selectedClass, onGameOver, onReturnHome, socket, ro
       )}
 
       {/* HUD overlay — stat bars rendered over the Phaser canvas */}
-      <div className="pointer-events-none absolute right-2 top-2 w-48 rounded-xl border border-gray-700 bg-gray-950/80 p-3 backdrop-blur-sm">
-        <p className="mb-2 text-[10px] font-bold tracking-widest text-purple-300">
-          {selectedClass.emoji} {selectedClass.name.toUpperCase()}
-        </p>
-        <StatBar label="Budget"           value={stats.budget}           emoji="💰" />
-        <StatBar label="Client Happiness" value={stats.clientHappiness}  emoji="😊" />
-        <StatBar label="Team Morale"      value={stats.teamMorale}       emoji="💪" />
-        <StatBar label="Delivery"         value={stats.deliveryProgress} emoji="🚀" />
-        <StatBar label="Tech Debt"        value={stats.technicalDebt}    emoji="🕷️" inverted />
-        <StatBar label="Compliance Risk"  value={stats.complianceRisk}   emoji="⚖️" inverted />
-      </div>
-
-      <div className="group pointer-events-auto absolute left-72 top-2">
-        <div
-          className={`flex h-12 w-12 items-center justify-center rounded-xl p-[3px] shadow-lg transition-transform duration-150 group-hover:scale-105${attackUi.progress >= 1 ? ' attack-ready' : ''}`}
-          style={{
-            background: `conic-gradient(#f97316 0deg ${attackUi.progress * 360}deg, rgba(15, 23, 42, 0.72) ${attackUi.progress * 360}deg 360deg)`,
-            boxShadow: attackUi.progress >= 1
-              ? '0 0 18px rgba(251, 146, 60, 0.7), 0 0 6px rgba(239, 68, 68, 0.4)'
-              : '0 0 10px rgba(251, 146, 60, 0.25)',
-          }}
-        >
-          <div
-            className="flex h-full w-full flex-col items-center justify-center rounded-[9px] border bg-slate-950/90 backdrop-blur-sm"
-            style={{
-              borderColor: attackUi.progress >= 1 ? 'rgba(251,146,60,0.55)' : 'rgba(251,146,60,0.2)',
-              color: attackUi.progress >= 1 ? '#fb923c' : '#9a5c30',
-            }}
-          >
-            <span className="text-[9px] leading-none">⚔️</span>
-            <span className="text-[11px] font-black uppercase leading-none mt-[2px]">E</span>
+      {isMobile ? (
+        <>
+          {/* ── Mobile HUD: compact horizontal stats bar across the top ── */}
+          <div className="pointer-events-none absolute left-0 right-0 top-0 flex items-center gap-1 border-b border-gray-700 bg-gray-950/80 px-3 py-1.5 backdrop-blur-sm">
+            {[
+              { label: 'Budget',   value: stats.budget,           emoji: '💰', inverted: false },
+              { label: 'Happy',    value: stats.clientHappiness,  emoji: '😊', inverted: false },
+              { label: 'Morale',   value: stats.teamMorale,       emoji: '💪', inverted: false },
+              { label: 'Delivery', value: stats.deliveryProgress, emoji: '🚀', inverted: false },
+              { label: 'Debt',     value: stats.technicalDebt,    emoji: '🕷️', inverted: true  },
+              { label: 'Risk',     value: stats.complianceRisk,   emoji: '⚖️', inverted: true  },
+            ].map(({ label, value, emoji, inverted }) => {
+              const pct = Math.max(0, Math.min(100, value));
+              let color = 'bg-green-500';
+              if (inverted) {
+                if (pct > 75) color = 'bg-red-500';
+                else if (pct > 50) color = 'bg-orange-500';
+                else if (pct > 25) color = 'bg-yellow-500';
+              } else if (pct < 25) color = 'bg-red-500';
+              else if (pct < 50) color = 'bg-orange-500';
+              else if (pct < 75) color = 'bg-yellow-500';
+              return (
+                <div key={label} className="flex min-w-0 flex-1 flex-col items-center gap-0.5">
+                  <span className="text-[8px] text-gray-400">{emoji}</span>
+                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-800">
+                    <div className={`h-1.5 rounded-full transition-all duration-700 ${color}`} style={{ width: `${pct}%` }} />
+                  </div>
+                </div>
+              );
+            })}
           </div>
-        </div>
-        <div className="pointer-events-none absolute left-0 top-full mt-2 w-48 rounded-lg border border-orange-700/40 bg-slate-950/95 p-3 opacity-0 shadow-lg transition-all duration-150 group-hover:translate-y-0 group-hover:opacity-100"
-          style={{ boxShadow: '0 10px 24px rgba(251, 146, 60, 0.2)' }}>
-          <p className="text-[10px] font-black uppercase tracking-[0.24em] text-orange-400">
-            E · Basic Attack
-          </p>
-          <p className="mt-2 text-[11px] text-slate-100">
-            Melee strike that deals damage to enemies in range.
-          </p>
-          <p className="mt-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-orange-500">
-            {attackDamageLabel}
-          </p>
-          <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-orange-500">
-            {attackUi.remainingLabel} · {(ATTACK_COOLDOWN / 1000).toFixed(1)}s cooldown
-          </p>
-        </div>
-      </div>
 
-      <div className="group pointer-events-auto absolute left-56 top-2">
-        <div
-          className="flex h-14 w-14 items-center justify-center rounded-xl p-[3px] shadow-lg transition-transform duration-150 group-hover:scale-105"
-          style={{
-            background: cooldownRing,
-            boxShadow: `0 0 18px ${abilityTheme.shadow}`,
-          }}
-        >
-          <div
-            className="flex h-full w-full items-center justify-center rounded-[10px] border bg-slate-950/90 backdrop-blur-sm"
-            style={{
-              borderColor: abilityTheme.accentSoft,
-              color: abilityTheme.accent,
-            }}
-          >
-            <span className="text-2xl font-black uppercase leading-none">Q</span>
+          {/* ── Mobile touch controls ── */}
+          <MobileControls
+            attackProgress={attackUi.progress}
+            abilityProgress={abilityUi.progress}
+            accentColor={abilityTheme.accent}
+          />
+        </>
+      ) : (
+        <>
+          {/* ── Desktop HUD: vertical stat panel top-right ── */}
+          <div className="pointer-events-none absolute right-2 top-2 w-48 rounded-xl border border-gray-700 bg-gray-950/80 p-3 backdrop-blur-sm">
+            <p className="mb-2 text-[10px] font-bold tracking-widest text-purple-300">
+              {selectedClass.emoji} {selectedClass.name.toUpperCase()}
+            </p>
+            <StatBar label="Budget"           value={stats.budget}           emoji="💰" />
+            <StatBar label="Client Happiness" value={stats.clientHappiness}  emoji="😊" />
+            <StatBar label="Team Morale"      value={stats.teamMorale}       emoji="💪" />
+            <StatBar label="Delivery"         value={stats.deliveryProgress} emoji="🚀" />
+            <StatBar label="Tech Debt"        value={stats.technicalDebt}    emoji="🕷️" inverted />
+            <StatBar label="Compliance Risk"  value={stats.complianceRisk}   emoji="⚖️" inverted />
           </div>
-        </div>
-        <div
-          className="pointer-events-none absolute left-0 top-full mt-2 w-64 rounded-lg border bg-slate-950/95 p-3 opacity-0 shadow-lg transition-all duration-150 group-hover:translate-y-0 group-hover:opacity-100"
-          style={{
-            borderColor: abilityTheme.accentSoft,
-            boxShadow: `0 10px 30px ${abilityTheme.shadow}`,
-          }}
-        >
-          <p className="text-[10px] font-black uppercase tracking-[0.24em]" style={{ color: abilityTheme.accent }}>
-            Q · {abilityDefinition.name}
-          </p>
-          <p className="mt-2 text-[11px] text-slate-100">
-            {abilityDefinition.description}
-          </p>
-          <p className="mt-2 text-[10px] font-semibold uppercase tracking-[0.18em]" style={{ color: abilityTheme.accent }}>
-            {abilityDefinition.rangeLabel}
-          </p>
-          <p className="mt-2 text-[10px] font-semibold uppercase tracking-[0.18em]" style={{ color: abilityTheme.accent }}>
-            {abilityUi.remainingLabel} · {totalCooldownLabel}
-          </p>
-        </div>
-      </div>
+
+          {/* ── Desktop attack button (E) ── */}
+          <div className="group pointer-events-auto absolute left-72 top-2">
+            <div
+              className={`flex h-12 w-12 items-center justify-center rounded-xl p-[3px] shadow-lg transition-transform duration-150 group-hover:scale-105${attackUi.progress >= 1 ? ' attack-ready' : ''}`}
+              style={{
+                background: `conic-gradient(#f97316 0deg ${attackUi.progress * 360}deg, rgba(15, 23, 42, 0.72) ${attackUi.progress * 360}deg 360deg)`,
+                boxShadow: attackUi.progress >= 1
+                  ? '0 0 18px rgba(251, 146, 60, 0.7), 0 0 6px rgba(239, 68, 68, 0.4)'
+                  : '0 0 10px rgba(251, 146, 60, 0.25)',
+              }}
+            >
+              <div
+                className="flex h-full w-full flex-col items-center justify-center rounded-[9px] border bg-slate-950/90 backdrop-blur-sm"
+                style={{
+                  borderColor: attackUi.progress >= 1 ? 'rgba(251,146,60,0.55)' : 'rgba(251,146,60,0.2)',
+                  color: attackUi.progress >= 1 ? '#fb923c' : '#9a5c30',
+                }}
+              >
+                <span className="text-[9px] leading-none">⚔️</span>
+                <span className="text-[11px] font-black uppercase leading-none mt-[2px]">E</span>
+              </div>
+            </div>
+            <div className="pointer-events-none absolute left-0 top-full mt-2 w-48 rounded-lg border border-orange-700/40 bg-slate-950/95 p-3 opacity-0 shadow-lg transition-all duration-150 group-hover:translate-y-0 group-hover:opacity-100"
+              style={{ boxShadow: '0 10px 24px rgba(251, 146, 60, 0.2)' }}>
+              <p className="text-[10px] font-black uppercase tracking-[0.24em] text-orange-400">
+                E · Basic Attack
+              </p>
+              <p className="mt-2 text-[11px] text-slate-100">
+                Melee strike that deals damage to enemies in range.
+              </p>
+              <p className="mt-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-orange-500">
+                {attackDamageLabel}
+              </p>
+              <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-orange-500">
+                {attackUi.remainingLabel} · {(ATTACK_COOLDOWN / 1000).toFixed(1)}s cooldown
+              </p>
+            </div>
+          </div>
+
+          {/* ── Desktop ability button (Q) ── */}
+          <div className="group pointer-events-auto absolute left-56 top-2">
+            <div
+              className="flex h-14 w-14 items-center justify-center rounded-xl p-[3px] shadow-lg transition-transform duration-150 group-hover:scale-105"
+              style={{
+                background: cooldownRing,
+                boxShadow: `0 0 18px ${abilityTheme.shadow}`,
+              }}
+            >
+              <div
+                className="flex h-full w-full items-center justify-center rounded-[10px] border bg-slate-950/90 backdrop-blur-sm"
+                style={{
+                  borderColor: abilityTheme.accentSoft,
+                  color: abilityTheme.accent,
+                }}
+              >
+                <span className="text-2xl font-black uppercase leading-none">Q</span>
+              </div>
+            </div>
+            <div
+              className="pointer-events-none absolute left-0 top-full mt-2 w-64 rounded-lg border bg-slate-950/95 p-3 opacity-0 shadow-lg transition-all duration-150 group-hover:translate-y-0 group-hover:opacity-100"
+              style={{
+                borderColor: abilityTheme.accentSoft,
+                boxShadow: `0 10px 30px ${abilityTheme.shadow}`,
+              }}
+            >
+              <p className="text-[10px] font-black uppercase tracking-[0.24em]" style={{ color: abilityTheme.accent }}>
+                Q · {abilityDefinition.name}
+              </p>
+              <p className="mt-2 text-[11px] text-slate-100">
+                {abilityDefinition.description}
+              </p>
+              <p className="mt-2 text-[10px] font-semibold uppercase tracking-[0.18em]" style={{ color: abilityTheme.accent }}>
+                {abilityDefinition.rangeLabel}
+              </p>
+              <p className="mt-2 text-[10px] font-semibold uppercase tracking-[0.18em]" style={{ color: abilityTheme.accent }}>
+                {abilityUi.remainingLabel} · {totalCooldownLabel}
+              </p>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
