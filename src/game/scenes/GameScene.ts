@@ -24,6 +24,7 @@ import { RemoteEnemy } from '../entities/RemoteEnemy';
 import { hordeArena } from '../levels/hordeArena';
 import type { StatePayload, MultiplayerGameOverPayload } from '../../types/multiplayer';
 import { soundManager } from '../sound';
+import { mobileInput } from '../mobileInput';
 
 const LEVELS: LevelData[] = [level1, level2, level3, bossLevel];
 const LOOT_STATS: Record<LootType, Partial<RawStats>> = {
@@ -66,6 +67,7 @@ export class GameScene extends Phaser.Scene {
   private remoteEnemies = new Map<string, RemoteEnemy>();
   private enemyCountText: Phaser.GameObjects.Text | null = null;
   private positionUpdateTimer = 0;
+  private prevMobileAbility = false;
   private readonly POSITION_UPDATE_INTERVAL = 50; // ms
   private socketCleanups: Array<() => void> = [];
 
@@ -156,7 +158,9 @@ export class GameScene extends Phaser.Scene {
     this.player.update(time);
 
     // Ability key — runs in both solo and multiplayer
-    if (Phaser.Input.Keyboard.JustDown(this.abilityKey)) {
+    const mobileAbilityJustDown = mobileInput.ability && !this.prevMobileAbility;
+    this.prevMobileAbility = mobileInput.ability;
+    if (Phaser.Input.Keyboard.JustDown(this.abilityKey) || mobileAbilityJustDown) {
       const projectileSnapshot = this.classId === 'security'
         ? this.projectiles.getChildren().filter(isPositionedActiveObject).map(({ x, y }) => ({ x, y }))
         : [];
@@ -444,14 +448,14 @@ export class GameScene extends Phaser.Scene {
 
   private setupHUD() {
     // Minimal in-scene text labels (main HUD is React overlay)
-    this.add.text(12, 10,
+    this.add.text(76, 10,
       this.isBossLevel ? '⚠ BOSS LEVEL' : `LEVEL ${this.levelIndex + 1}`,
-      { fontSize: '13px', color: '#e5e7eb', backgroundColor: '#00000066', padding: { x: 6, y: 3 } },
+      { fontSize: '16px', color: '#e5e7eb', backgroundColor: '#00000066', padding: { x: 8, y: 4 } },
     ).setScrollFactor(0).setDepth(100);
 
-    this.hpText = this.add.text(12, 32,
+    this.hpText = this.add.text(76, 38,
       `HP: ${this.player?.hp ?? 100}`,
-      { fontSize: '12px', color: '#f87171', backgroundColor: '#00000066', padding: { x: 6, y: 3 } },
+      { fontSize: '15px', color: '#f87171', backgroundColor: '#00000066', padding: { x: 8, y: 4 } },
     ).setScrollFactor(0).setDepth(100);
   }
 
