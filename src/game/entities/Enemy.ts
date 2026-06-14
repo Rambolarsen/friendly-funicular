@@ -51,7 +51,6 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
 
     scene.add.existing(this);
     scene.physics.add.existing(this);
-    (this.body as Phaser.Physics.Arcade.Body).setGravityY(0);
     this.setDisplaySize(24, 24);
     if (cfg.tint) {
       this.setTint(cfg.tint);
@@ -64,6 +63,13 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     // HP bar (background + fill)
     this.hpBarBg = scene.add.rectangle(x, y - 20, 32, 4, 0x333333).setDepth(15);
     this.hpBar   = scene.add.rectangle(x, y - 20, 32, 4, 0x22c55e).setDepth(16).setOrigin(0.5, 0.5);
+  }
+
+  get facingDirection(): 1 | -1 { return this.direction; }
+
+  tryJump(vy: number): void {
+    const body = this.body as Phaser.Physics.Arcade.Body;
+    if (body.blocked.down) body.setVelocityY(vy);
   }
 
   patrol() {

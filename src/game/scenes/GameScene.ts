@@ -275,6 +275,9 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
+    // Enemy jump AI: gap detection + vertical player chase
+    this.applyEnemyJumpAI();
+
     // Exit trigger
     if (!this.isBossLevel && this.player.x >= this.currentLevel.exitX) {
       this.onLevelComplete();
@@ -282,6 +285,47 @@ export class GameScene extends Phaser.Scene {
   }
 
   // ── Private helpers ──────────────────────────────────────────────────────────
+
+  private readonly ENEMY_JUMP_VY = -750;
+  private readonly ENEMY_LOOK_AHEAD_PX = 14;
+
+  /** Returns true if any platform body covers the given point. */
+  private hasPlatformAt(x: number, y: number): boolean {
+    for (const child of this.platforms.getChildren()) {
+      const body = (child as Phaser.Physics.Arcade.Image).body as Phaser.Physics.Arcade.StaticBody;
+      if (x >= body.left && x <= body.right && y >= body.top && y <= body.bottom) return true;
+    }
+    return false;
+  }
+
+  /**
+   * Gap detection + vertical chase for solo-mode enemies.
+   * Called once per update after patrol() has set velocityX.
+   */
+  private applyEnemyJumpAI(): void {
+    for (const obj of this.enemies.getChildren()) {
+      const enemy = obj as Enemy;
+      if (!enemy.active) continue;
+      const body = enemy.body as Phaser.Physics.Arcade.Body;
+      if (!body.blocked.down) continue;
+
+      const dir = enemy.facingDirection;
+      const feetY = enemy.y + 13; // 1px below enemy feet
+      const lookX = enemy.x + dir * this.ENEMY_LOOK_AHEAD_PX;
+
+      // Jump over gaps: if no platform just below the look-ahead point, jump
+      if (!this.hasPlatformAt(lookX, feetY)) {
+        enemy.tryJump(this.ENEMY_JUMP_VY);
+        continue;
+      }
+
+      // Vertical chase: jump if player is above and within reachable height
+      const dy = enemy.y - this.player.y;
+      if (dy > 50 && dy < 160) {
+        enemy.tryJump(this.ENEMY_JUMP_VY);
+      }
+    }
+  }
 
   private buildBackground() {
     const { width, height } = this.currentLevel;
