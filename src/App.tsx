@@ -87,6 +87,13 @@ function App() {
           setResult({ outcome, stats, loseReason: reason, selectedClass: selectedClass!, multiplayerResult });
           setPhase('end');
         }}
+        onReturnHome={() => {
+          SocketClient.reset();
+          setSocket(null);
+          setRoomId(null);
+          setResult(null);
+          setPhase('start');
+        }}
       />
     </div>
   );

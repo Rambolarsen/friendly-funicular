@@ -4,6 +4,7 @@ import { INITIAL_STATS } from '../constants/initialState';
 import { AbilityUsedPayload, AttackUsedPayload, ConsultantClass, GameOverPayload, RawStats } from '../types/game';
 import type { MultiplayerGameOverPayload } from '../types/multiplayer';
 import { StatBar } from '../components/StatBar';
+import { HomeConfirmDialog } from '../components/HomeConfirmDialog';
 import { getAbilityCooldownState, getAbilityDefinition } from './abilities';
 import { CLASS_ATTACK_DAMAGE } from '../constants/classes';
 import { createGameConfig } from './config';
@@ -14,6 +15,7 @@ import { ATTACK_COOLDOWN } from './entities/Player';
 interface PhaserGameProps {
   selectedClass: ConsultantClass;
   onGameOver: (outcome: 'win' | 'lose', stats: RawStats, reason: string | null, multiplayerResult?: MultiplayerResult) => void;
+  onReturnHome: () => void;
   socket?: SocketClient;
   roomId?: string;
 }
@@ -31,7 +33,7 @@ const ABILITY_THEME_BY_CLASS: Record<string, { accent: string; accentSoft: strin
   intern: { accent: '#e879f9', accentSoft: 'rgba(232, 121, 249, 0.22)', shadow: 'rgba(232, 121, 249, 0.35)' },
 };
 
-export function PhaserGame({ selectedClass, onGameOver, socket, roomId }: PhaserGameProps) {
+export function PhaserGame({ selectedClass, onGameOver, onReturnHome, socket, roomId }: PhaserGameProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const gameRef = useRef<Phaser.Game | null>(null);
   const onGameOverRef = useRef(onGameOver);
@@ -41,6 +43,7 @@ export function PhaserGame({ selectedClass, onGameOver, socket, roomId }: Phaser
   const [attackCooldown, setAttackCooldown] = useState<(AttackUsedPayload & { activatedAt: number }) | null>(null);
   const [attackCooldownNow, setAttackCooldownNow] = useState(() => Date.now());
   const abilityDefinition = useMemo(() => getAbilityDefinition(selectedClass.id), [selectedClass.id]);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   useEffect(() => {
     onGameOverRef.current = onGameOver;
@@ -172,6 +175,23 @@ export function PhaserGame({ selectedClass, onGameOver, socket, roomId }: Phaser
   return (
     <div className="relative w-full h-full">
       <div ref={containerRef} className="w-full h-full" />
+
+      {/* Home button */}
+      <button
+        onClick={() => setConfirmOpen(true)}
+        className="pointer-events-auto absolute left-2 top-2 flex h-9 w-9 items-center justify-center rounded-xl border border-purple-800 bg-slate-950/90 text-lg backdrop-blur-sm transition-transform duration-150 hover:scale-105 hover:border-purple-600"
+        title="Return to main menu"
+      >
+        🏠
+      </button>
+
+      {/* Confirm dialog */}
+      {confirmOpen && (
+        <HomeConfirmDialog
+          onConfirm={onReturnHome}
+          onCancel={() => setConfirmOpen(false)}
+        />
+      )}
 
       {/* HUD overlay — stat bars rendered over the Phaser canvas */}
       <div className="pointer-events-none absolute right-2 top-2 w-48 rounded-xl border border-gray-700 bg-gray-950/80 p-3 backdrop-blur-sm">
