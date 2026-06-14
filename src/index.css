@@ -10,6 +10,8 @@ body {
   font-family: 'Cinzel', serif;
 }
 
+/* Remove forced-landscape CSS rotation — handled via JS wrapper in App.tsx */
+
 ::-webkit-scrollbar {
   width: 6px;
 }

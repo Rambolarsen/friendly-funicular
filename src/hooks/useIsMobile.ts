@@ -1,17 +1,20 @@
 import { useEffect, useState } from 'react';
 
 /**
- * Returns true when the runtime looks like a touch device narrower than 1280px.
- * Re-evaluates if the window is resized across the breakpoint.
+ * Returns true when the runtime looks like a mobile/touch phone.
+ * Uses both maxTouchPoints and (pointer: coarse) to exclude touchscreen laptops/desktops,
+ * which report maxTouchPoints > 0 but still use a fine pointer (mouse).
  */
 export function useIsMobile(): boolean {
-  const [mobile, setMobile] = useState(
-    () => navigator.maxTouchPoints > 0 && window.innerWidth < 1280,
-  );
+  const isPhone = () =>
+    navigator.maxTouchPoints > 0 &&
+    window.matchMedia('(pointer: coarse)').matches;
+
+  const [mobile, setMobile] = useState(isPhone);
 
   useEffect(() => {
-    const mq = window.matchMedia('(max-width: 1279px)');
-    const handler = () => setMobile(navigator.maxTouchPoints > 0 && mq.matches);
+    const mq = window.matchMedia('(pointer: coarse)');
+    const handler = () => setMobile(isPhone());
     mq.addEventListener('change', handler);
     return () => mq.removeEventListener('change', handler);
   }, []);
