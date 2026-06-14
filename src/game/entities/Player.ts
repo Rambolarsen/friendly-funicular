@@ -3,7 +3,7 @@ import { RawStats } from '../../types/game';
 import { applyStatChanges } from '../../domain/rules/statRules';
 import { checkWinLose } from '../../domain/rules/progressionRules';
 import { EnemyType } from '../levels/types';
-import { CLASS_MODIFIERS, CLASS_ATTACK_DAMAGE } from '../../constants/classes';
+import { CLASS_MODIFIERS, CLASS_ATTACK_DAMAGE, CLASS_ATTACK_QUOTES } from '../../constants/classes';
 import { ATTACK_USED } from '../eventKeys';
 import { soundManager } from '../sound';
 
@@ -23,6 +23,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   private abilityCooldownUntil = 0;
   private projectileImmunityUntil = 0;
   private invincibleUntil = 0;
+  private quoteVisibleUntil = 0;
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private wasd!: {
     up: Phaser.Input.Keyboard.Key;
@@ -100,6 +101,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       this.attackCooldownTimer = time + ATTACK_COOLDOWN;
       this.showAttackBox();
       soundManager.attack();
+      this.maybeShowAttackQuote(time);
       this.scene.game.events.emit(ATTACK_USED, { cooldownMs: ATTACK_COOLDOWN });
     }
 
@@ -192,6 +194,36 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
         onComplete: () => { spark.destroy(); },
       });
     }
+  }
+
+  private maybeShowAttackQuote(time: number): void {
+    if (time < this.quoteVisibleUntil) return;
+    if (Math.random() >= 0.15) return;
+
+    const quotes = CLASS_ATTACK_QUOTES[this.classId];
+    if (!quotes || quotes.length === 0) return;
+
+    const quote = quotes[Math.floor(Math.random() * quotes.length)];
+    const text = this.scene.add.text(this.x, this.y - 40, quote, {
+      color: '#ffd040',
+      fontSize: '13px',
+      fontStyle: 'bold',
+      stroke: '#000000',
+      strokeThickness: 3,
+    });
+    text.setOrigin(0.5, 1);
+    text.setDepth(25);
+
+    this.quoteVisibleUntil = time + 1500;
+
+    this.scene.tweens.add({
+      targets: text,
+      y: text.y - 48,
+      alpha: 0,
+      duration: 1500,
+      ease: 'Quad.easeOut',
+      onComplete: () => { text.destroy(); },
+    });
   }
 
   /** Returns true if the attack hitbox overlaps the given world bounds */
