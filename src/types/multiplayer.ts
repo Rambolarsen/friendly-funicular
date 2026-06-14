@@ -20,6 +20,7 @@ export interface MultiplayerPlayerState {
   animKey: string;
   hp: number;
   stats: MultiplayerRawStats;
+  attackQuote?: string;
 }
 
 export type MultiplayerEnemyType = 'goblin' | 'wraith' | 'troll' | 'spectre' | 'brute' | 'boss';
@@ -53,6 +54,7 @@ export interface PlayerUpdatePayload {
   animKey: string;
   hp: number;
   stats: MultiplayerRawStats;
+  attackQuote?: string;
 }
 
 export interface AttackEnemyPayload {

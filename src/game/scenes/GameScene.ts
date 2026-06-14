@@ -195,7 +195,9 @@ export class GameScene extends Phaser.Scene {
           animKey: (this.player as unknown as { currentAnimKey?: string }).currentAnimKey ?? 'player-idle',
           hp: this.player.hp,
           stats: this.stats,
+          attackQuote: this.player.pendingQuote,
         });
+        this.player.pendingQuote = undefined;
       }
 
       // Attack against RemoteEnemies
@@ -479,6 +481,7 @@ export class GameScene extends Phaser.Scene {
         this.remotePlayers.set(ps.id, rp);
       }
       rp.applyState(ps);
+      if (ps.attackQuote) rp.showQuote(ps.attackQuote);
     }
 
     // Sync remote enemies

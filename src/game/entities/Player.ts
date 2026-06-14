@@ -24,6 +24,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   private projectileImmunityUntil = 0;
   private invincibleUntil = 0;
   private quoteVisibleUntil = 0;
+  /** Quote fired this attack frame — read once by GameScene for multiplayer broadcast. */
+  pendingQuote: string | undefined = undefined;
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private wasd!: {
     up: Phaser.Input.Keyboard.Key;
@@ -204,6 +206,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     if (!quotes || quotes.length === 0) return;
 
     const quote = quotes[Math.floor(Math.random() * quotes.length)];
+    this.pendingQuote = quote;
     const text = this.scene.add.text(this.x, this.y - 40, quote, {
       color: '#ffd040',
       fontSize: '13px',

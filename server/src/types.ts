@@ -18,6 +18,7 @@ export interface PlayerState {
   animKey: string;
   hp: number;
   stats: RawStats;
+  attackQuote?: string;
 }
 
 export type EnemyType = 'goblin' | 'wraith' | 'troll' | 'spectre' | 'brute' | 'boss';
@@ -54,6 +55,7 @@ export interface PlayerUpdatePayload {
   animKey: string;
   hp: number;
   stats: RawStats;
+  attackQuote?: string;
 }
 
 export interface AttackEnemyPayload {
